@@ -3,24 +3,25 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"html/template"
 	"net/http"
-	"time"
+	"text/template"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/gorilla/mux"
 )
 
-type QLog struct {
+type QueueLog struct {
 	Room   string
 	Action string
 	Time   string
 }
 
 type Queue struct {
-	Id        string
-	Logs      []QLog
-	Highlight QLog
+	Branch    string     `json:"branch"`
+	Date      string     `json:"date"`
+	Id        string     `json:"id"`
+	Logs      []QueueLog `json:"logs"`
+	Highlight QueueLog   `json:"highlight"`
 }
 
 // Can be modified to JSON..
@@ -50,8 +51,8 @@ func routeIndex(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Receive all data in table related to given id (filter by date as well)
 		var id = "0001"
-		var date = time.Now().Format("2006-01-02")
-		//var date = "2021-04-16"
+		//var date = time.Now().Format("2006-01-02")
+		var date = "2021-04-16"
 
 		// Select from table value 'room' 'action' 'time' where id=[id] and date=date
 		db, err := connectToDatabase()
@@ -68,8 +69,8 @@ func routeIndex(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var room_id string
-		var logs []QLog
-		var log QLog
+		var logs []QueueLog
+		var log QueueLog
 
 		for rows.Next() {
 			var action_id string
@@ -99,7 +100,7 @@ func routeIndex(w http.ResponseWriter, r *http.Request) {
 		// Check for empty rows
 		if len(logs) == 0 {
 			// Assign default value
-			logs = append(logs, QLog{
+			logs = append(logs, QueueLog{
 				Room:   "-",
 				Action: "-",
 				Time:   "-",
@@ -122,14 +123,11 @@ func routeIndex(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Render output
-		var disp_data = DisplayData{
-			Branch: "Kebon Jeruk",
-			Date:   time.Now().Format("01-02-2006"),
-			Data:   data,
-		}
-
+		// displayData, err := json.Marshal(data)
+		//w.Header().Set("content-type", "application/json")
+		// w.Write([]byte(displayData))
 		var tmpl = template.Must(template.ParseFiles("template/index.html"))
-		if err := tmpl.Execute(w, disp_data); err != nil {
+		if err := tmpl.Execute(w, data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
