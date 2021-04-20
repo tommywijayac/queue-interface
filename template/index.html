@@ -40,8 +40,8 @@
             }
 
             /* remove border at top and bottom */
-            .table > tbody > tr:first-child > td,
-            .table > tbody > tr:last-child > td {
+            .table > tbody > tr:first-child,
+            .table > tbody > tr:last-child {
                 border: none
             }
         </style>
@@ -63,13 +63,13 @@
 
             <!-- Highlight section -->
             <h2 class="d-flex flex-column">
-                <div class="display-2" style="font-weight: bold;">{{ .Data.Id }}</div>
+                <div class="display-2" style="font-weight: bold;">{{ .Id }}</div>
                 <hr class="hr-highlight"/>
                 <div class="h5" style="margin-bottom: 0px;"> sekarang </div>
-                <div class="display-5"> {{ .Data.Highlight.Room }} </div>
+                <div class="display-5"> {{ .Highlight.Room }} </div>
                 <div class="m-2"></div>
-                <div class="h5" style="margin-bottom: 0px;">{{ .Data.Highlight.Action }}</div>
-                <div class="display-5"> {{ .Data.Highlight.Time }} </div>
+                <div class="h5" style="margin-bottom: 0px;">{{ .Highlight.Action }}</div>
+                <div class="display-5"> {{ .Highlight.Time }} </div>
             </h2>
     
             <div class="m-5"></div>
@@ -82,7 +82,7 @@
             </div>
             <table class="table" style="color: gray">
                 <tbody>
-                    {{ range $elem := .Data.Logs }}
+                    {{ range $elem := .Logs }}
                     <tr>
                         <td class="text-left">{{ $elem.Room }}</td>
                         <td>{{ $elem.Action }}</td>
