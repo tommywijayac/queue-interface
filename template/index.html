@@ -19,61 +19,32 @@
         <!-- Fake favicon, to avoid extra request to server -->
         <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=">
 
-        <!-- Local CSS -->
-        <style>
-            .hr-dotted-inline {
-                width: 100%;
-                position: relative;
-                margin: 15px;
-                background-image: linear-gradient(to right, black 10%, rgba(255,255,255,0) 0%);
-                background-position: center;
-                background-size: 20px 1px;
-                background-repeat: repeat-x;            
-            }
-
-            /* remove border at top and bottom */
-            .table > tbody > tr:first-child > td,
-            .table > tbody > tr:last-child {
-                border: none
-            }
-        </style>
-
         <title>
             KMN Antrian
         </title>
     </head>
-    <body class="container-md text-center p-4">
-        {{template "_header" .}}
-
-        <!-- Highlight section -->
-        <h2 class="d-flex flex-column">
-            <div class="display-2" style="font-weight: bold;">{{ .Id }}</div>
-            <hr class="hr-highlight"/>
-            <div class="h5" style="margin-bottom: 0px;"> sekarang </div>
-            <div class="display-5"> {{ .Highlight.Room }} </div>
-            <div class="m-2"></div>
-            <div class="h5" style="margin-bottom: 0px;">{{ .Highlight.Action }}</div>
-            <div class="display-5"> {{ .Highlight.Time }} </div>
-        </h2>
-
-        <div class="m-5"></div>
-
-        <!-- Log section -->
-        <!-- wrapping these two components in div and set color doesn't affect table -->
-        <div class="d-flex" style="color: gray">
-            <div class="h3">riwayat</div>
-            <div class="hr-dotted-inline"></div>
-        </div>
-        <table class="table" style="color: gray">
-            <tbody>
-                {{ range $elem := .Logs }}
-                <tr>
-                    <td class="text-left">{{ $elem.Room }}</td>
-                    <td>{{ $elem.Action }}</td>
-                    <td>{{ $elem.Time }}</td>
-                </tr>
-                {{ end }}
-            </tbody>
-        </table>
+    <body>
+        <form action="/" method="POST">
+            <div class="d-flex flex-column justify-content-center align-items-center p-4">
+                <div class="h5">pilih lokasi klinik:</div>
+    
+                <div class="m-2"></div>
+    
+                <!-- [TODO] wrap in range, Golang provide branches name and button ID-->
+                <button type="button" class="link-card">
+                    <img src="/assets/logo.png" alt="KMN" width=150px height=auto>
+                    <br/>
+                    <div class="h4">Kebon Jeruk</div>
+                </button>
+    
+                <div class="m-3"></div>
+    
+                <button type="button" class="link-card">
+                    <img src="/assets/logo.png" alt="KMN" width=150px height=auto>
+                    <br/>
+                    <div class="h4">Kebon Jeruk</div>
+                </button>
+            </div>    
+        </form>
     </body>
 </html>

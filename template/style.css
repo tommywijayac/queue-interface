@@ -2,8 +2,8 @@ hr.hr-highlight {
     width: 60%;
     height: 2px;
     align-self: center;
-    background-color:rgb(0, 62, 126);
-    color:rgb(0, 62, 126);
+    background-color:#00347e;
+    color:#00347e;
     opacity: 1;
 }
 
@@ -18,21 +18,35 @@ hr.hr-highlight {
 }
 
 .kmn-theme {
-    background-color: rgb(0, 62, 126);
+    background-color: #00347e;
 }
 
-.queue-card {
+button.link-card {
+    width: 300px;
+    text-align: center;
+    padding: 20px;
+    background-color: white;
+    border: solid 1px #00347e;
+    transition: all 0.3s ease-in-out;
+}
+
+button.link-card:hover {
+    background-color: #2d85de72;
+    cursor: pointer;
+}
+
+div.queue-card {
     /* TODO: how much?*/
     width: 400px;
     text-align: center;
-    padding: 20px;
+    padding: 10px;
 
-    border: solid 3px rgb(0, 62, 126);
+    border: solid 3px #00347e;
     border-radius: 10px;
     border-left-width: 15px !important;
 }
 
-.dot {
+div.dot {
     height: 20px;
     width: 20px;
     background-color: black;
