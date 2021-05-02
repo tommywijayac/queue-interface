@@ -21,6 +21,32 @@ hr.hr-highlight {
     background-color: rgb(0, 62, 126);
 }
 
+.queue-card {
+    /* TODO: how much?*/
+    width: 400px;
+    text-align: center;
+    padding: 20px;
+
+    border: solid 3px rgb(0, 62, 126);
+    border-radius: 10px;
+    border-left-width: 15px !important;
+}
+
+.dot {
+    height: 20px;
+    width: 20px;
+    background-color: black;
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+
+div.vertical-line {
+    width: 3px;
+    background-color: black;
+    /* TODO: must be set proportional to card width*/
+    height: 50px;
+}
+
 /* OTP-like input */
 .qinput {
     width: 90px;
