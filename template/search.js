@@ -3,9 +3,14 @@ function QueueNumberInput() {
     for (let i = 0; i < inputs.length; i++) {
         inputs[i].addEventListener('keydown', function(event) {
             if (event.key == "Backspace") {
-                inputs[i].value = '';
-                if (i != 0)
+                if (i == inputs.length - 1 && inputs[i].value !== '') {
+                    // don't go back to previous block
+                    // must be emptied inside if because value is used for evaluation
+                    inputs[i].value = '';
+                } else if (i != 0) {
+                    inputs[i].value = '';
                     inputs[i-1].focus();
+                }
             } else {
                 if (i === inputs.length - 1 && inputs[i].value !== '') {
                     return true;
@@ -26,16 +31,16 @@ function QueueNumberInput() {
 }
 QueueNumberInput();
 
-function GetQueueInputElement(index) {
-    return document.getElementById('qinput' + index)
-}
+// function GetQueueInputElement(index) {
+//     return document.getElementById('qinput' + index)
+// }
 
-function OnFocusEvent(index) {
-    for (item=1; item<index; item++) {
-        const currentElem = GetQueueInputElement(item);
-        if (!currentElem.value) {
-            currentElem.focus();
-            break;
-        }
-    }
-}
+// function OnFocusEvent(index) {
+//     for (item=1; item<index; item++) {
+//         const currentElem = GetQueueInputElement(item);
+//         if (!currentElem.value) {
+//             currentElem.focus();
+//             break;
+//         }
+//     }
+// }
