@@ -7,7 +7,8 @@
 
         <!-- Bootstrap CSS -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-        
+        <link rel="stylesheet" href="style.css">
+
         <!-- Optional JavaScript -->
         <!-- jQuery first, then Popper.js, then Bootstrap JS -->
         <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
@@ -29,15 +30,6 @@
                 background-repeat: repeat-x;            
             }
 
-            hr.hr-highlight {
-                width: 60%;
-                height: 12px;
-                align-self: center;
-                background-color:rgb(0, 62, 126);
-                color:rgb(0, 62, 126);
-                opacity: 1;
-            }
-
             /* remove border at top and bottom */
             .table > tbody > tr:first-child > td,
             .table > tbody > tr:last-child {
@@ -50,46 +42,37 @@
         </title>
     </head>
     <body class="container-md text-center p-4">
-        <div>
-            <!-- Title section -->
-            <div class="d-flex flex-column">
-                <div><img src="/assets/logo.png" alt="KMN" width=150px height=auto></div>
-                <div class="h3">{{ .Branch }}</div>
-                <div class="h5" style="font-weight: lighter;">{{ .Date }}</div>
-            </div>
-            
-            <div class="m-4"></div>
+        {{template "_header" .}}
 
-            <!-- Highlight section -->
-            <h2 class="d-flex flex-column">
-                <div class="display-2" style="font-weight: bold;">{{ .Id }}</div>
-                <hr class="hr-highlight"/>
-                <div class="h5" style="margin-bottom: 0px;"> sekarang </div>
-                <div class="display-5"> {{ .Highlight.Room }} </div>
-                <div class="m-2"></div>
-                <div class="h5" style="margin-bottom: 0px;">{{ .Highlight.Action }}</div>
-                <div class="display-5"> {{ .Highlight.Time }} </div>
-            </h2>
-    
-            <div class="m-5"></div>
+        <!-- Highlight section -->
+        <h2 class="d-flex flex-column">
+            <div class="display-2" style="font-weight: bold;">{{ .Id }}</div>
+            <hr class="hr-highlight"/>
+            <div class="h5" style="margin-bottom: 0px;"> sekarang </div>
+            <div class="display-5"> {{ .Highlight.Room }} </div>
+            <div class="m-2"></div>
+            <div class="h5" style="margin-bottom: 0px;">{{ .Highlight.Action }}</div>
+            <div class="display-5"> {{ .Highlight.Time }} </div>
+        </h2>
 
-            <!-- Log section -->
-            <!-- wrapping these two components in div and set color doesn't affect table -->
-            <div class="d-flex" style="color: gray">
-                <div class="h3">riwayat</div>
-                <div class="hr-dotted-inline"></div>
-            </div>
-            <table class="table" style="color: gray">
-                <tbody>
-                    {{ range $elem := .Logs }}
-                    <tr>
-                        <td class="text-left">{{ $elem.Room }}</td>
-                        <td>{{ $elem.Action }}</td>
-                        <td>{{ $elem.Time }}</td>
-                    </tr>
-                    {{ end }}
-                </tbody>
-            </table>
+        <div class="m-5"></div>
+
+        <!-- Log section -->
+        <!-- wrapping these two components in div and set color doesn't affect table -->
+        <div class="d-flex" style="color: gray">
+            <div class="h3">riwayat</div>
+            <div class="hr-dotted-inline"></div>
         </div>
+        <table class="table" style="color: gray">
+            <tbody>
+                {{ range $elem := .Logs }}
+                <tr>
+                    <td class="text-left">{{ $elem.Room }}</td>
+                    <td>{{ $elem.Action }}</td>
+                    <td>{{ $elem.Time }}</td>
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
     </body>
 </html>

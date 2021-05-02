@@ -20,10 +20,9 @@ type Queue struct {
 }
 
 func GetQueueLogs(db *sql.DB, id string) (string, []QueueLog, error) {
-
 	// Testing purpose: use static date so we dont need to modify sql everyday
 	//var date = time.Now().Format("2006-01-02")
-	date := "2021-04-17"
+	date := "2021-04-18"
 
 	// Read data from database
 	rows, err := db.Query("SELECT room_id, room, action, time FROM `queue` WHERE (cust_id=? AND date=?)", id, date)
