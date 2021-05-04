@@ -6,7 +6,6 @@ func main() {
 		"root",
 		"",
 		"kmn_queue",
-		"Kebon Jeruk",
 	)
 
 	theApp.Run(":8081")

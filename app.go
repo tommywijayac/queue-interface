@@ -12,20 +12,46 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
 )
 
 type App struct {
-	Router          *mux.Router
-	DB              *sql.DB
+	Router *mux.Router
+	DB     *sql.DB
+
 	TemplateHome    *template.Template
 	TemplateDisplay *template.Template
-
-	BranchName string
+	BranchNames     []BranchData
 }
 
-func (theApp *App) Initialize(user, password, dbname, branchname string) {
-	// Connect to database
+type BranchData struct {
+	Name string `mapstructure:"name"`
+	Code string `mapstructure:"code"`
+}
+
+func (theApp *App) Initialize(user, password, dbname string) {
 	var err error
+
+	// Read configuration file
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	viper.SetConfigType("json")
+	err = viper.ReadInConfig()
+	if err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			panic(fmt.Errorf("ER001: Fatal error config not found"))
+		} else {
+			panic(fmt.Errorf("ER002: Fatal error config file: %s \n", err.Error()))
+		}
+	}
+
+	fmt.Println("Config has been read")
+	err = viper.UnmarshalKey("branch", &theApp.BranchNames)
+	if err != nil {
+		panic(fmt.Errorf("ER003: Fatal error while reading config file: %s \n", err.Error()))
+	}
+
+	// Connect to database
 	connectionString := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s", user, password, dbname)
 	theApp.DB, err = sql.Open("mysql", connectionString)
 	if err != nil {
@@ -39,12 +65,10 @@ func (theApp *App) Initialize(user, password, dbname, branchname string) {
 	theApp.Router.HandleFunc("/{id:[0-9]+}", theApp.DisplayQueueHandler).Methods("GET") // Sanitize input: valid ID is a 4 digit number
 	theApp.Router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
-	// Constant details
-	theApp.BranchName = branchname
-
 	// Parse templates here instead in request to avoid delay
-	theApp.TemplateHome = template.Must(template.ParseFiles("template/search.html", "template/_header.html"))
-	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
+	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
+	//theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html"))
+	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html"))
 }
 
 func (theApp *App) Run(addr string) {
@@ -75,12 +99,7 @@ func SanitizeID(id string) (string, error) {
 }
 
 func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
-	var headerInfo = map[string]interface{}{
-		"Branch": theApp.BranchName,
-		"Date":   time.Now().Format("02-01-2006"),
-	}
-
-	if err := theApp.TemplateHome.Execute(w, headerInfo); err != nil {
+	if err := theApp.TemplateHome.Execute(w, theApp.BranchNames); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -130,7 +149,6 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var q = Queue{
-		Branch:    theApp.BranchName,
 		Date:      time.Now().Format("02-01-2006"),
 		Id:        room_id,
 		Highlight: logs[0],

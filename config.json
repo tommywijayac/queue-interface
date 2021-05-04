@@ -1,0 +1,16 @@
+{
+    "branch" : [
+        {
+            "name": "Kebon Jeruk",
+            "code": "KBJ"
+        },
+        {
+            "name": "Kemayoran",
+            "code": "KMY"
+        },
+        {
+            "name": "Jakarta Selatan",
+            "code": "JSL"
+        }
+    ]
+}
