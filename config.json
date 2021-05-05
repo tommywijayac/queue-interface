@@ -2,15 +2,47 @@
     "branch" : [
         {
             "name": "Kebon Jeruk",
-            "code": "KBJ"
-        },
-        {
+            "code": "kbj"
+        }, {
             "name": "Kemayoran",
-            "code": "KMY"
-        },
-        {
+            "code": "kmy"
+        }, {
             "name": "Jakarta Selatan",
-            "code": "JSL"
+            "code": "jsl"
         }
+    ],
+    "room-visible" : 3,
+    "room" : [
+        { 
+            "name": "R. Persiapan Tindakan",
+            "code": "R"
+        }, {
+            "name": "R. Tindakan",
+            "code": "O"
+        }, {
+            "name": "R. Pemulihan",
+            "code": "P"
+        } , {
+            "name": "",
+            "code": ""
+        } , {
+            "name": "",
+            "code": ""
+        } , {
+            "name": "",
+            "code": ""
+        } , {
+            "name": "",
+            "code": ""
+        } , {
+            "name": "",
+            "code": ""
+        } , {
+            "name": "",
+            "code": ""
+        } , {
+            "name": "",
+            "code": ""
+        }        
     ]
 }
