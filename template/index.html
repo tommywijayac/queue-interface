@@ -8,7 +8,7 @@
         <!-- Bootstrap CSS -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <!-- Local CSS -->
-        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="static/css/style.css">
 
         <!-- Optional JavaScript -->
         <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -30,20 +30,15 @@
     
                 <div class="m-2"></div>
     
-                <!-- [TODO] wrap in range, Golang provide branches name and button ID-->
-                <button type="button" class="link-card">
-                    <img src="/assets/logo.png" alt="KMN" width=150px height=auto>
-                    <br/>
-                    <div class="h4">Kebon Jeruk</div>
+                {{ range $index, $branch := . }}
+                <button type="submit" class="branch-card" value="{{ $index }}" name="branch">
+                    <span><img src="/assets/logo-sm.png" alt="KMN" width=100px height=auto></span>
+                    <div class="m-1"></div>
+                    <div class="h4" style="font-weight: normal;">{{ $branch.Name }}</div>
                 </button>
     
                 <div class="m-3"></div>
-    
-                <button type="button" class="link-card">
-                    <img src="/assets/logo.png" alt="KMN" width=150px height=auto>
-                    <br/>
-                    <div class="h4">Kebon Jeruk</div>
-                </button>
+                {{ end }}
             </div>    
         </form>
     </body>
