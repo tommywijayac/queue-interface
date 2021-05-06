@@ -11,7 +11,7 @@
             "code": "jsl"
         }
     ],
-    "room-visible" : 3,
+    "visible-room" : 3,
     "room" : [
         { 
             "name": "R. Persiapan Tindakan",
