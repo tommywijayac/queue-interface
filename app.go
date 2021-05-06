@@ -88,7 +88,6 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	// [TODO]: handle this
 	theApp.Router.HandleFunc("/{branch}/{id}", theApp.DisplayQueueHandler).Methods("GET")
 
-	theApp.Router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	// Parse templates here instead in request to avoid delay
@@ -136,7 +135,23 @@ func (theApp *App) GetBranchString(branchCode string) string {
 }
 
 func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
-	if err := theApp.TemplateHome.Execute(w, theApp.Branches); err != nil {
+	viper.SetConfigName("runningtext")
+	viper.AddConfigPath(".")
+	viper.SetConfigType("json")
+	err := viper.ReadInConfig()
+	var txt string
+	if err == nil {
+		txt = viper.GetString("text")
+	} else {
+		txt = ""
+	}
+
+	payload := map[string]interface{}{
+		"Branches": theApp.Branches,
+		"Text":     txt,
+	}
+
+	if err := theApp.TemplateHome.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
