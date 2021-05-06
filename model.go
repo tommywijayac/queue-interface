@@ -6,17 +6,14 @@ import (
 )
 
 type QueueLog struct {
-	Room   string
-	Action string
-	Time   string
+	Room string
+	Time string
 }
 
 type Queue struct {
-	Branch    string
-	Date      string
-	Id        string `json:"id"`
-	Logs      []QueueLog
-	Highlight QueueLog
+	Branch string
+	Id     string `json:"id"`
+	Logs   []QueueLog
 }
 
 func GetQueueLogs(db *sql.DB, id string) (string, []QueueLog, error) {
@@ -46,14 +43,6 @@ func GetQueueLogs(db *sql.DB, id string) (string, []QueueLog, error) {
 		// Pre-process data received from database
 		room_id = fmt.Sprintf("%s%s", room_id, id)
 
-		if action_id == "m" {
-			log.Action = "masuk"
-		} else if action_id == "k" {
-			log.Action = "keluar"
-		} else {
-			log.Action = "undefined"
-		}
-
 		// Append
 		logs = append(logs, log)
 	}
@@ -61,9 +50,8 @@ func GetQueueLogs(db *sql.DB, id string) (string, []QueueLog, error) {
 	if len(logs) == 0 {
 		// Assign default value
 		logs = append(logs, QueueLog{
-			Room:   "data tidak ditemukan",
-			Action: "-",
-			Time:   "-",
+			Room: "data tidak ditemukan",
+			Time: "-",
 		})
 		room_id = id
 	} else

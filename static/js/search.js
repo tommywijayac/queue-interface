@@ -31,16 +31,4 @@ function QueueNumberInput() {
 }
 QueueNumberInput();
 
-// function GetQueueInputElement(index) {
-//     return document.getElementById('qinput' + index)
-// }
-
-// function OnFocusEvent(index) {
-//     for (item=1; item<index; item++) {
-//         const currentElem = GetQueueInputElement(item);
-//         if (!currentElem.value) {
-//             currentElem.focus();
-//             break;
-//         }
-//     }
-// }
+document.getElementById("search-form").setAttribute("action", window.location.pathname);
