@@ -8,7 +8,7 @@
         <!-- Bootstrap CSS -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <!-- Local CSS -->
-        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="static/css/style.css">
 
         <!-- Optional JavaScript -->
         <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -26,22 +26,22 @@
     <body class="container-md text-center p-4">
         {{template "_header" .}}
 
-        <form action="/" method="POST">
+        <form action="/" method="POST" id="search-form">
             <label>masukkan nomor antrian</label>
             <br/>
             <div id="qnum" class="d-flex flex-row justify-content-center">
-                <input class="qinput mx-2 rounded" id="qinput1" type="text" maxlength="1"/>
-                <input class="qinput mx-2 rounded" id="qinput2" type="text" maxlength="1"/>
-                <input class="qinput mx-2 rounded" id="qinput3" type="text" maxlength="1"/>
-                <input class="qinput mx-2 rounded" id="qinput4" type="text" maxlength="1"/>
+                <input class="qinput mx-2 rounded" id="qinput1" name="qinput1" type="text" maxlength="1"/>
+                <input class="qinput mx-2 rounded" id="qinput2" name="qinput2" type="text" maxlength="1"/>
+                <input class="qinput mx-2 rounded" id="qinput3" name="qinput3" type="text" maxlength="1"/>
+                <input class="qinput mx-2 rounded" id="qinput4" name="qinput4" type="text" maxlength="1"/>
             </div>
             <!-- [TODO] adjust width -->
             <hr class="hr-highlight"/>
             <!-- [TODO] adjust button style? -->
-            <button type="button" class="btn btn-primary kmn-theme">lihat</button>
+            <button type="submit" class="btn btn-primary kmn-theme">lihat</button>
         </form>
 
         <!-- Local Javascript -->
-        <script src="search.js"></script>
+        <script src="static/js/search.js"></script>
     </body>
 </html>
