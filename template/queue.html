@@ -8,7 +8,7 @@
         <!-- Bootstrap CSS -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <!-- Local CSS -->
-        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="static/css/style.css">
 
         <!-- Optional JavaScript -->
         <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -38,14 +38,17 @@
     
             <div class="m-5"></div>
     
+            {{ range $elem := . }}
             <div class="queue-card">
-                <div class="h4">Pra-Operasi</div>
-                <div class="h5">Entry 1 second line</div>
+                <div class="h4">{{ . }}</div>
+                <div class="h5">{{ . }}</div>
+                <div class="h5">{{ . }}</div>
             </div>
 
             <div class="vertical-line"></div>
+            {{ end }}
 
-            <div class="queue-card">
+            <!-- <div class="queue-card">
                 <div class="h4">Operasi</div>
                 <div class="h5">Entry 2 second line</div>
             </div>
@@ -57,14 +60,14 @@
                 <div class="h5">Entry 3 second line</div>
             </div>
 
-            <div class="vertical-line"></div>
+            <div class="vertical-line"></div> -->
 
             <div class="dot"></div>
             <div class="h4">Selesai</div>
-            <div class="h5">Finaly Entry line</div>
+            <div class="h5">{{ . }}</div>
         </div>
     </body>
 
     <!-- Local Javascript. Put after HTML as it modifies HTML elements -->
-    <script src="rtc.js"></script>
+    <script src="static/js/rtc.js"></script>
 </html>
