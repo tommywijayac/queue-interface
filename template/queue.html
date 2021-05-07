@@ -8,7 +8,7 @@
         <!-- Bootstrap CSS -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <!-- Local CSS -->
-        <link rel="stylesheet" href="static/css/style.css">
+        <link rel="stylesheet" href="/static/css/style.css">
 
         <!-- Optional JavaScript -->
         <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -27,40 +27,21 @@
         <div class="d-flex flex-column justify-content-center align-items-center p-4">
             {{template "_header" .}}
 
-            <!-- debug -->
-            <div class="h5" style="font-weight: lighter;" id="time"></div>
-
-            <div class="d-flex flex-column justify-content-center">
-                <div class="h5">nomor antrian</div>
-                <div class="h5">{{ .Id }}</div>
-                <hr class="hr-highlight"/>
-            </div>
+            <div class="h5 font-weight-light" id="time"></div>
+            <div class="h5">nomor antrian</div>
+            <div class="display-3 font-weight-bold">{{ .Id }}</div>
+            <hr class="hr-highlight"/>
     
-            <div class="m-5"></div>
+            <div class="m-2"></div>
     
-            {{ range $elem := . }}
+        {{ range $room := .Rooms }}
             <div class="queue-card">
-                <div class="h4">{{ . }}</div>
-                <div class="h5">{{ . }}</div>
-                <div class="h5">{{ . }}</div>
+                <div class="h4">{{ $room.Name }}</div>
+                <div class="h5">{{ $room.Time }}</div>
             </div>
 
             <div class="vertical-line"></div>
-            {{ end }}
-
-            <!-- <div class="queue-card">
-                <div class="h4">Operasi</div>
-                <div class="h5">Entry 2 second line</div>
-            </div>
-
-            <div class="vertical-line"></div>
-
-            <div class="queue-card">
-                <div class="h4">Post-Operasi</div>
-                <div class="h5">Entry 3 second line</div>
-            </div>
-
-            <div class="vertical-line"></div> -->
+        {{ end }}
 
             <div class="dot"></div>
             <div class="h4">Selesai</div>
@@ -69,5 +50,5 @@
     </body>
 
     <!-- Local Javascript. Put after HTML as it modifies HTML elements -->
-    <script src="static/js/rtc.js"></script>
+    <script src="/static/js/rtc.js"></script>
 </html>
