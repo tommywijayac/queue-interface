@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const MAX_ROOM int = 10
+
 type App struct {
 	Router *mux.Router
 
@@ -26,6 +28,7 @@ type App struct {
 	TemplateDisplay *template.Template
 	Branches        []BranchData
 	Rooms           []RoomData
+	limitRooms      int
 	visibleRooms    int
 }
 
@@ -37,6 +40,7 @@ type BranchData struct {
 type RoomData struct {
 	Name string `mapstructure:"name"`
 	Code string `mapstructure:"code"`
+	Time string
 }
 
 func (theApp *App) Initialize(user, password, dbname string) {
@@ -55,23 +59,36 @@ func (theApp *App) Initialize(user, password, dbname string) {
 		}
 	}
 
+	// Read branch configuration
 	err = viper.UnmarshalKey("branch", &theApp.Branches)
 	if err != nil {
 		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s \n", err.Error()))
 	}
+	if len(theApp.Branches) == 0 {
+		panic(fmt.Errorf("ER005: Fatal error - no Branch endpoint defined"))
+	}
 
+	// Read room configuration
 	err = viper.UnmarshalKey("room", &theApp.Rooms)
 	if err != nil {
 		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s \n", err.Error()))
 	}
+	// Limit the number of visible room regardless of config file
+	roomCount := viper.GetInt("visible-room")
+	if roomCount < 0 {
+		roomCount = 0
+	} else if roomCount > MAX_ROOM {
+		roomCount = MAX_ROOM
+	}
+	// Prune the slice
+	theApp.Rooms = theApp.Rooms[:roomCount]
 
-	theApp.visibleRooms = viper.GetInt("visible-room")
-
-	// Validate branch data
-	if len(theApp.Branches) == 0 {
-		panic(fmt.Errorf("ER004: Fatal error - no Branch endpoint defined"))
+	// Validate data
+	if len(theApp.Rooms) == 0 {
+		panic(fmt.Errorf("ER004: Fatal config error - no Queue to be displayed"))
 	}
 
+	// [TODO] database get from config file or environment vars
 	// Connect to database
 	connectionString := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s", user, password, dbname)
 	theApp.DB, err = sql.Open("mysql", connectionString)
@@ -79,8 +96,8 @@ func (theApp *App) Initialize(user, password, dbname string) {
 		panic(err.Error())
 	}
 
-	theApp.Router = mux.NewRouter()
 	// Initialize routes
+	theApp.Router = mux.NewRouter()
 	theApp.Router.HandleFunc("/", theApp.HomeHandler).Methods("GET")
 	theApp.Router.HandleFunc("/", theApp.HomePostHandler).Methods("POST")
 	theApp.Router.HandleFunc("/{branch}", theApp.SearchHandler).Methods("GET")
@@ -238,7 +255,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	idClean, err := SanitizeID(vars["id"])
 	fmt.Println(idClean)
 
-	// [TODO] update database query..
+	// [TODO] update database query based on actual database design
 	room_id, logs, err := GetQueueLogs(theApp.DB, idClean)
 	fmt.Println(logs)
 	if err != nil {
@@ -252,11 +269,15 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// [TODO] Match logs with displayed data
+	// [TODO] Inactive logs must be greyed out
+	for i := 0; i < len(theApp.Rooms); i++ {
+		theApp.Rooms[i].Time = "pk -"
+	}
 
-	payload := Queue{
-		Branch: branchString,
-		Id:     room_id,
-		Logs:   logs,
+	payload := map[string]interface{}{
+		"Branch": branchString,
+		"Id":     room_id,
+		"Rooms":  theApp.Rooms,
 	}
 
 	// Render output
