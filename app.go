@@ -180,8 +180,13 @@ func (theApp *App) GetBranchInfo(branchCode string) (string, int) {
 }
 
 func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
+	var branchNames []string
+	for _, branch := range theApp.Branches {
+		branchNames = append(branchNames, branch.Name)
+	}
+
 	payload := map[string]interface{}{
-		"Branches": theApp.Branches,
+		"Branches": branchNames,
 		"Text":     theApp.footer,
 	}
 
