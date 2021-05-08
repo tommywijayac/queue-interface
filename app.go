@@ -23,6 +23,7 @@ type App struct {
 	TemplateHome    *template.Template
 	TemplateSearch  *template.Template
 	TemplateDisplay *template.Template
+	TemplateError   *template.Template
 
 	DB           []*sql.DB
 	Branches     []BranchData
@@ -125,6 +126,7 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	theApp.Router.HandleFunc("/{branch}", theApp.SearchHandler).Methods("GET")
 	theApp.Router.HandleFunc("/{branch}", theApp.SearchPostHandler).Methods("POST")
 	theApp.Router.HandleFunc("/{branch}/{id}", theApp.DisplayQueueHandler).Methods("GET")
+	theApp.Router.NotFoundHandler = http.HandlerFunc(theApp.NotFoundHandler)
 
 	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -132,6 +134,7 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
 	theApp.TemplateSearch = template.Must(template.ParseFiles("template/search.html", "template/_header.html"))
 	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html"))
+	theApp.TemplateError = template.Must(template.ParseFiles("template/error.html", "template/_header.html"))
 }
 
 func (theApp *App) Run(addr string) {
@@ -213,9 +216,10 @@ func (theApp *App) HomePostHandler(w http.ResponseWriter, r *http.Request) {
 
 func (theApp *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	// Since we use variable URL, NotFoundHandler can't catch this
 	branchString, _ := theApp.GetBranchInfo(vars["branch"])
 	if branchString == "" {
-		http.Error(w, "404 Page not found", http.StatusNotFound)
+		theApp.NotFoundHandler(w, r)
 		return
 	}
 
@@ -260,7 +264,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	// Translate branch code to name and id
 	branchString, branchID := theApp.GetBranchInfo(vars["branch"])
 	if branchString == "" || branchID == -1 {
-		http.Error(w, "404 Page not found", http.StatusNotFound)
+		theApp.NotFoundHandler(w, r)
 		return
 	}
 
@@ -269,8 +273,6 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(idClean)
 
 	// [TODO] update database query based on actual database design
-	fmt.Println(theApp.DB[branchID])
-
 	room_id, logs, err := GetQueueLogs(theApp.DB[branchID], idClean)
 	fmt.Println(logs)
 	if err != nil {
@@ -306,4 +308,10 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	return
+}
+
+func (theApp *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
+	if tmplErr := theApp.TemplateError.Execute(w, nil); tmplErr != nil {
+		http.Error(w, tmplErr.Error(), http.StatusInternalServerError)
+	}
 }
