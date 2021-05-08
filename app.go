@@ -134,7 +134,7 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
 	theApp.TemplateSearch = template.Must(template.ParseFiles("template/search.html", "template/_header.html"))
 	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html"))
-	theApp.TemplateError = template.Must(template.ParseFiles("template/error.html", "template/_header.html"))
+	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html"))
 }
 
 func (theApp *App) Run(addr string) {
