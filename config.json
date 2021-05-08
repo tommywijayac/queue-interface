@@ -2,13 +2,25 @@
     "branch" : [
         {
             "name": "Kebon Jeruk",
-            "code": "kbj"
+            "code": "kbj",
+            "db-addr": "127.0.0.1:3306",
+            "db-user": "root",
+            "db-pswd": "",
+            "db-name": "kmn_queue"
         }, {
             "name": "Kemayoran",
-            "code": "kmy"
+            "code": "kmy",
+            "db-addr": "127.0.0.1:3306",
+            "db-user": "root",
+            "db-pswd": "",
+            "db-name": "kmn_queue"
         }, {
             "name": "Jakarta Selatan",
-            "code": "jsl"
+            "code": "jsl",
+            "db-addr": "127.0.0.1:3306",
+            "db-user": "root",
+            "db-pswd": "",
+            "db-name": "kmn_queue"
         }
     ],
     "visible-room" : 3,

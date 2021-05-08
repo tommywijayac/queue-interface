@@ -20,13 +20,11 @@ const MAX_ROOM int = 10
 type App struct {
 	Router *mux.Router
 
-	/* [TODO] either multiple DB or multiple tables*/
-	DB *sql.DB
-
 	TemplateHome    *template.Template
 	TemplateSearch  *template.Template
 	TemplateDisplay *template.Template
 
+	DB           []*sql.DB
 	Branches     []BranchData
 	Rooms        []RoomData
 	limitRooms   int
@@ -35,8 +33,12 @@ type App struct {
 }
 
 type BranchData struct {
-	Name string `mapstructure:"name"`
-	Code string `mapstructure:"code"`
+	Name         string `mapstructure:"name"`
+	Code         string `mapstructure:"code"`
+	DatabaseAddr string `mapstructure:"db-addr"`
+	DatabaseUser string `mapstructure:"db-user"`
+	DatabasePswd string `mapstructure:"db-pswd"`
+	DatabaseName string `mapstructure:"db-name"`
 }
 
 type RoomData struct {
@@ -91,20 +93,29 @@ func (theApp *App) Initialize(user, password, dbname string) {
 		panic(fmt.Errorf("ER004: Fatal config error - no Queue to be displayed"))
 	}
 
+	// Connect to database
+	theApp.DB = make([]*sql.DB, len(theApp.Branches))
+	for i := 0; i < len(theApp.Branches); i++ {
+		connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s",
+			theApp.Branches[i].DatabaseUser,
+			theApp.Branches[i].DatabasePswd,
+			theApp.Branches[i].DatabaseAddr,
+			theApp.Branches[i].DatabaseName)
+
+		fmt.Println(connectionString)
+
+		theApp.DB[i], err = sql.Open("mysql", connectionString)
+		if err != nil {
+			panic("sql open err" + err.Error())
+		}
+	}
+
 	viper.SetConfigName("runningtext")
 	err = viper.ReadInConfig()
 	if err == nil {
 		theApp.footer = viper.GetString("text")
 	} else {
 		theApp.footer = ""
-	}
-
-	// [TODO] database get from config file or environment vars
-	// Connect to database
-	connectionString := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s", user, password, dbname)
-	theApp.DB, err = sql.Open("mysql", connectionString)
-	if err != nil {
-		panic(err.Error())
 	}
 
 	// Initialize routes
@@ -150,15 +161,19 @@ func SanitizeID(id string) (string, error) {
 	return idClean, nil
 }
 
-func (theApp *App) GetBranchString(branchCode string) string {
+func (theApp *App) GetBranchInfo(branchCode string) (string, int) {
 	// Match URL path {branch} with config file
 	branch := ""
-	for i := 0; i < len(theApp.Branches); i++ {
+	i := 0
+	for i < len(theApp.Branches) {
 		if theApp.Branches[i].Code == branchCode {
 			branch = theApp.Branches[i].Name
+			break
 		}
+		i++
 	}
-	return branch
+
+	return branch, i
 }
 
 func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +213,7 @@ func (theApp *App) HomePostHandler(w http.ResponseWriter, r *http.Request) {
 
 func (theApp *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	branchString := theApp.GetBranchString(vars["branch"])
+	branchString, _ := theApp.GetBranchInfo(vars["branch"])
 	if branchString == "" {
 		http.Error(w, "404 Page not found", http.StatusNotFound)
 		return
@@ -242,20 +257,21 @@ func (theApp *App) SearchPostHandler(w http.ResponseWriter, r *http.Request) {
 func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	// Get branch from URL
-	branchString := theApp.GetBranchString(vars["branch"])
-	if branchString == "" {
+	// Translate branch code to name and id
+	branchString, branchID := theApp.GetBranchInfo(vars["branch"])
+	if branchString == "" || branchID == -1 {
 		http.Error(w, "404 Page not found", http.StatusNotFound)
 		return
 	}
-	fmt.Println(branchString)
 
 	// Get id from URL. Remove any leading zeroes
 	idClean, err := SanitizeID(vars["id"])
-	fmt.Println(idClean)
+	//fmt.Println(idClean)
 
 	// [TODO] update database query based on actual database design
-	room_id, logs, err := GetQueueLogs(theApp.DB, idClean)
+	fmt.Println(theApp.DB[branchID])
+
+	room_id, logs, err := GetQueueLogs(theApp.DB[branchID], idClean)
 	fmt.Println(logs)
 	if err != nil {
 		switch err {
