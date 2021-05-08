@@ -96,12 +96,12 @@ func (theApp *App) Initialize(user, password, dbname string) {
 
 	// Connect to database
 	theApp.DB = make([]*sql.DB, len(theApp.Branches))
-	for i := 0; i < len(theApp.Branches); i++ {
+	for i, branch := range theApp.Branches {
 		connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s",
-			theApp.Branches[i].DatabaseUser,
-			theApp.Branches[i].DatabasePswd,
-			theApp.Branches[i].DatabaseAddr,
-			theApp.Branches[i].DatabaseName)
+			branch.DatabaseUser,
+			branch.DatabasePswd,
+			branch.DatabaseAddr,
+			branch.DatabaseName)
 
 		fmt.Println(connectionString)
 
@@ -292,6 +292,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 
 	// [TODO] Match logs with displayed data
 	// [TODO] Inactive logs must be greyed out
+	// Assignment must access direct object, for-range makes a copy
 	for i := 0; i < len(theApp.Rooms); i++ {
 		theApp.Rooms[i].Time = "pk -"
 		if i == len(theApp.Rooms)-2 {
