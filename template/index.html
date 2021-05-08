@@ -23,25 +23,31 @@
             KMN Antrian
         </title>
     </head>
-    <body>
+    <body class="d-flex flex-column">
         <form action="/" method="POST">
-            <div class="d-flex flex-column justify-content-center align-items-center p-4">
-                <div class="h5">pilih lokasi klinik:</div>
+            <div class="container text-center p-3">
+                <div class="column justify-content-center">
+                    <div class="h5">pilih lokasi klinik:</div>
     
-                <div class="m-2"></div>
-    
-                {{ range $index, $branch := .Branches }}
-                <button type="submit" class="branch-card" value="{{ $index }}" name="branch">
-                    <span><img src="/static/assets/logo-sm.png" alt="KMN" width=100px height=auto></span>
-                    <div class="m-1"></div>
-                    <div class="h4" style="font-weight: normal;">{{ $branch.Name }}</div>
-                </button>
-    
-                <div class="m-3"></div>
-                {{ end }}
+                    <div class="m-2"></div>
+        
+                    {{ range $index, $branch := .Branches }}
+                        <button type="submit" class="branch-card" value="{{ $index }}" name="branch">
+                            <span><img src="/static/assets/logo-sm.png" alt="KMN" width=100px height=auto></span>
+                            <div class="m-1"></div>
+                            <div class="h4" style="font-weight: normal;">{{ $branch.Name }}</div>
+                        </button>
+            
+                        <div class="m-4"></div>
+                    {{ end }}
+                </div>
+            </div>
 
-                <div class="h4">{{ .Text }}</div>
-            </div>    
+            <footer id="sticky-footer">
+                <div class="container text-center">
+                    {{ .Text }}
+                </div>
+            </footer>
         </form>
     </body>
 </html>
