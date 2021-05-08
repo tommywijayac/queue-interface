@@ -26,10 +26,12 @@ type App struct {
 	TemplateHome    *template.Template
 	TemplateSearch  *template.Template
 	TemplateDisplay *template.Template
-	Branches        []BranchData
-	Rooms           []RoomData
-	limitRooms      int
-	visibleRooms    int
+
+	Branches     []BranchData
+	Rooms        []RoomData
+	limitRooms   int
+	visibleRooms int
+	footer       string
 }
 
 type BranchData struct {
@@ -38,9 +40,10 @@ type BranchData struct {
 }
 
 type RoomData struct {
-	Name string `mapstructure:"name"`
-	Code string `mapstructure:"code"`
-	Time string
+	IsActive bool
+	Name     string `mapstructure:"name"`
+	Code     string `mapstructure:"code"`
+	Time     string
 }
 
 func (theApp *App) Initialize(user, password, dbname string) {
@@ -88,6 +91,14 @@ func (theApp *App) Initialize(user, password, dbname string) {
 		panic(fmt.Errorf("ER004: Fatal config error - no Queue to be displayed"))
 	}
 
+	viper.SetConfigName("runningtext")
+	err = viper.ReadInConfig()
+	if err == nil {
+		theApp.footer = viper.GetString("text")
+	} else {
+		theApp.footer = ""
+	}
+
 	// [TODO] database get from config file or environment vars
 	// Connect to database
 	connectionString := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s", user, password, dbname)
@@ -102,7 +113,6 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	theApp.Router.HandleFunc("/", theApp.HomePostHandler).Methods("POST")
 	theApp.Router.HandleFunc("/{branch}", theApp.SearchHandler).Methods("GET")
 	theApp.Router.HandleFunc("/{branch}", theApp.SearchPostHandler).Methods("POST")
-	// [TODO]: handle this
 	theApp.Router.HandleFunc("/{branch}/{id}", theApp.DisplayQueueHandler).Methods("GET")
 
 	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -152,20 +162,9 @@ func (theApp *App) GetBranchString(branchCode string) string {
 }
 
 func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
-	viper.SetConfigName("runningtext")
-	viper.AddConfigPath(".")
-	viper.SetConfigType("json")
-	err := viper.ReadInConfig()
-	var txt string
-	if err == nil {
-		txt = viper.GetString("text")
-	} else {
-		txt = ""
-	}
-
 	payload := map[string]interface{}{
 		"Branches": theApp.Branches,
-		"Text":     txt,
+		"Text":     theApp.footer,
 	}
 
 	if err := theApp.TemplateHome.Execute(w, payload); err != nil {
@@ -272,12 +271,18 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	// [TODO] Inactive logs must be greyed out
 	for i := 0; i < len(theApp.Rooms); i++ {
 		theApp.Rooms[i].Time = "pk -"
+		if i == len(theApp.Rooms)-2 {
+			theApp.Rooms[i].IsActive = true
+		} else {
+			theApp.Rooms[i].IsActive = false
+		}
 	}
 
 	payload := map[string]interface{}{
 		"Branch": branchString,
 		"Id":     room_id,
 		"Rooms":  theApp.Rooms,
+		"Text":   theApp.footer,
 	}
 
 	// Render output

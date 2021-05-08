@@ -67,6 +67,20 @@ div.vertical-line {
     height: 50px;
 }
 
+#page-content {
+}
+
+#sticky-footer {
+    background-color:red;
+    
+    position: -webkit-sticky;
+    position: sticky;
+    bottom: 0;
+
+    max-height: 100px;
+    overflow: scroll;
+}
+
 /* OTP-like input */
 .qinput {
     width: 90px;

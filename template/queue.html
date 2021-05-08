@@ -23,8 +23,8 @@
             KMN Antrian
         </title>
     </head>
-    <body>
-        <div class="d-flex flex-column justify-content-center align-items-center p-4">
+    <body class="d-flex flex-column">
+        <div class="justify-content-start align-items-center p-4" id="page-content">
             {{template "_header" .}}
 
             <div class="h5 font-weight-light" id="time"></div>
@@ -34,19 +34,32 @@
     
             <div class="m-2"></div>
     
-        {{ range $room := .Rooms }}
-            <div class="queue-card">
-                <div class="h4">{{ $room.Name }}</div>
-                <div class="h5">{{ $room.Time }}</div>
-            </div>
-
-            <div class="vertical-line"></div>
+        {{ range $index, $room := .Rooms }}
+            {{ if $room.IsActive }}
+                <div class="queue-card">
+                    <div class="h4">{{ $room.Name }}</div>
+                    <div class="h5">{{ $room.Time }}</div>
+                </div>
+                <div class="vertical-line"></div>
+            {{ else }}
+                <div class="queue-card" style="color:gainsboro; border-color:gainsboro;">
+                    <div class="h4">{{ $room.Name }}</div>
+                    <div class="h5">{{ $room.Time }}</div>
+                </div>
+                <div class="vertical-line" style="background-color: gainsboro;"></div>
+            {{ end }}
         {{ end }}
 
             <div class="dot"></div>
-            <div class="h4">Selesai</div>
-            <div class="h5">{{ . }}</div>
+            <div>
+                <div class="h4">Selesai</div>
+                <div class="h5">{{ . }}</div>
+            </div>
         </div>
+
+        <footer id="sticky-footer">
+            {{ .Text }}
+        </footer>
     </body>
 
     <!-- Local Javascript. Put after HTML as it modifies HTML elements -->
