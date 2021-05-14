@@ -67,18 +67,27 @@ div.vertical-line {
     height: 50px;
 }
 
-#page-content {
+footer {
+    margin: 0 10% 0 10%;
+    border-radius: 3px;
+
+    overflow: hidden;
 }
 
 #sticky-footer {
-    background-color:red;
+    background-color:gold;
     
     position: -webkit-sticky;
     position: sticky;
     bottom: 0;
-
     max-height: 100px;
-    overflow: scroll;
+}
+
+.info-card {
+    line-height: 1.6;
+
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* OTP-like input */
@@ -99,4 +108,28 @@ div.vertical-line {
 .qinput:active,
 .qinput:focus {
     box-shadow: 0 0 8px rgba(97, 180, 229, 1);
+}
+
+.fadein-out {
+    animation: fadein_out 5s ease-out;
+    animation-iteration-count: 1;
+  }
+  
+@keyframes fadein_out {
+    10% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+  }
+
+input::-webkit-inner-spin-button,
+input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: none;
 }

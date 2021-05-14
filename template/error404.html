@@ -23,27 +23,16 @@
             KMN Antrian
         </title>
     </head>
-    <body class="container-md text-center p-4">
-        {{template "_header" .}}
-
-        <form action="/" method="POST" id="search-form">
-            <label>masukkan nomor antrian</label>
-            <br/>
-            <div id="qnum" class="d-flex flex-row justify-content-center">
-                <input class="qinput mx-2 rounded" id="qinput1" type="[a-zA-Z]{1}" maxlength="1"/>
-                <input class="qinput mx-2 rounded" id="qinput2" pattern="[0-9]{1}" type="number" min="0" max="9"/>
-                <input class="qinput mx-2 rounded" id="qinput3" pattern="[0-9]{1}" type="number" min="0" max="9"/>
-                <input class="qinput mx-2 rounded" id="qinput4" pattern="[0-9]{1}" type="number" min="0" max="9"/>
+    <body class="d-flex flex-column justify-content-center align-item-center">
+        <div class="container text-center">
+            <div class="column justify-content-center">
+                <img src="/static/assets/logo-lg.png" alt="KMN" width=150px height=auto>
+                <div class="m-4"></div>
+                <div class="display-3 font-weight-bold">404</div>
+                <div class="display-4">halaman tak ditemukan</div>
+                <div class="m-4"></div>
+                <a class="btn btn-primary kmn-theme" href="/">kembali</a>
             </div>
-            <!-- [TODO] adjust width -->
-            <hr class="hr-highlight"/>
-            <!-- [TODO] adjust button style? -->
-            <button type="submit" class="btn btn-primary kmn-theme">lihat</button>
-            <div class="m-2">
-            <div class="h-5" style="color:red; opacity: 0;" id="warning">antrian harus diawali dengan huruf, diikuti dengan tiga angka</div>
-        </form>
-
-        <!-- Local Javascript -->
-        <script src="/static/js/search.js"></script>
+        </div>
     </body>
 </html>

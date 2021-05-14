@@ -29,13 +29,13 @@
                 <div class="column justify-content-center">
                     <div class="h5">pilih lokasi klinik:</div>
     
-                    <div class="m-2"></div>
+                    <div class="m-3"></div>
         
                     {{ range $index, $branch := .Branches }}
                         <button type="submit" class="branch-card" value="{{ $index }}" name="branch">
                             <span><img src="/static/assets/logo-sm.png" alt="KMN" width=100px height=auto></span>
                             <div class="m-1"></div>
-                            <div class="h4" style="font-weight: normal;">{{ $branch.Name }}</div>
+                            <div class="h4" style="font-weight: normal;">{{ $branch }}</div>
                         </button>
             
                         <div class="m-4"></div>
@@ -44,8 +44,13 @@
             </div>
 
             <footer id="sticky-footer">
-                <div class="container text-center">
-                    {{ .Text }}
+                <div class="d-flex flex-row">
+                    <div>
+                        icon here
+                    </div>
+                    <div class="container text-center info-card">
+                        {{ .Text }}
+                    </div>
                 </div>
             </footer>
         </form>
