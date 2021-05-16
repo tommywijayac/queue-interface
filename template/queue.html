@@ -60,13 +60,13 @@
             <div class="dot"></div>
             <div>
                 <div class="h4">Selesai</div>
-                <div class="h5">{{ . }}</div>
+                <!-- <div class="h5">{{ . }}</div> -->
             </div>
         </div>
 
-        <footer id="sticky-footer">
-            {{ .Text }}
-        </footer>
+        {{ if .Footer }}
+            {{ template "_footer" . }}
+        {{ end }}
     </body>
 
     <!-- Local Javascript. Put after HTML as it modifies HTML elements -->
