@@ -163,8 +163,6 @@ func SanitizeID(id string) (string, error) {
 }
 
 func GetFooterText(branchCode string) string {
-	fmt.Println(branchCode)
-
 	var footer string
 	viper.SetConfigName("runningtext")
 	viper.AddConfigPath(".")
@@ -176,7 +174,6 @@ func GetFooterText(branchCode string) string {
 	} else {
 		footer = viper.GetString(branchCode)
 	}
-	fmt.Println(footer)
 
 	return footer
 }
