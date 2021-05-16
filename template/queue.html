@@ -34,21 +34,21 @@
     
             <div class="m-2"></div>
     
-        {{ range $index, $room := .Rooms }}
-            {{ if $room.IsActive }}
-                <div class="queue-card">
-                    <div class="h4">{{ $room.Name }}</div>
-                    <div class="h5">{{ $room.Time }}</div>
-                </div>
-                <div class="vertical-line"></div>
-            {{ else }}
-                <div class="queue-card" style="color:gainsboro; border-color:gainsboro;">
-                    <div class="h4">{{ $room.Name }}</div>
-                    <div class="h5">{{ $room.Time }}</div>
-                </div>
-                <div class="vertical-line" style="background-color: gainsboro;"></div>
+            {{ range $index, $room := .Rooms }}
+                {{ if $room.IsActive }}
+                    <div class="queue-card">
+                        <div class="h4">{{ $room.Name }}</div>
+                        <div class="h5">{{ $room.Time }}</div>
+                    </div>
+                    <div class="vertical-line"></div>
+                {{ else }}
+                    <div class="queue-card" style="color:gainsboro; border-color:gainsboro;">
+                        <div class="h4">{{ $room.Name }}</div>
+                        <div class="h5">{{ $room.Time }}</div>
+                    </div>
+                    <div class="vertical-line" style="background-color: gainsboro;"></div>
+                {{ end }}
             {{ end }}
-        {{ end }}
 
             <div class="queue-card" style="border-color: grey; color: grey">
                 <div class="h4">test</div>
