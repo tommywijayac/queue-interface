@@ -25,12 +25,10 @@ type App struct {
 	TemplateDisplay *template.Template
 	TemplateError   *template.Template
 
-	DB           []*sql.DB
-	Branches     []BranchData
-	Rooms        []RoomData
-	limitRooms   int
-	visibleRooms int
-	footer       string
+	DB       []*sql.DB
+	Branches []BranchData
+	Rooms    []RoomData
+	footer   string
 }
 
 type BranchData struct {
@@ -131,10 +129,10 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	// Parse templates here instead in request to avoid delay
-	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
-	theApp.TemplateSearch = template.Must(template.ParseFiles("template/search.html", "template/_header.html"))
-	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html"))
-	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html"))
+	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html", "template/_footer.html"))
+	theApp.TemplateSearch = template.Must(template.ParseFiles("template/search.html", "template/_header.html", "template/_footer.html"))
+	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
+	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html", "template/_footer.html"))
 }
 
 func (theApp *App) Run(addr string) {
@@ -164,6 +162,25 @@ func SanitizeID(id string) (string, error) {
 	return idClean, nil
 }
 
+func GetFooterText(branchCode string) string {
+	fmt.Println(branchCode)
+
+	var footer string
+	viper.SetConfigName("runningtext")
+	viper.AddConfigPath(".")
+	viper.SetConfigType("json")
+	err := viper.ReadInConfig()
+	if err != nil {
+		// by keeping footer as empty text, it won't be displayed
+		footer = ""
+	} else {
+		footer = viper.GetString(branchCode)
+	}
+	fmt.Println(footer)
+
+	return footer
+}
+
 func (theApp *App) GetBranchInfo(branchCode string) (string, int) {
 	// Match URL path {branch} with config file
 	branch := ""
@@ -187,9 +204,8 @@ func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	payload := map[string]interface{}{
 		"Branches": branchNames,
-		"Text":     theApp.footer,
+		"Footer":   theApp.footer,
 	}
-
 	if err := theApp.TemplateHome.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -222,16 +238,16 @@ func (theApp *App) HomePostHandler(w http.ResponseWriter, r *http.Request) {
 func (theApp *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// Since we use variable URL, NotFoundHandler can't catch this
-	branchString, _ := theApp.GetBranchInfo(vars["branch"])
+	branchCode := vars["branch"]
+	branchString, _ := theApp.GetBranchInfo(branchCode)
 	if branchString == "" {
 		theApp.NotFoundHandler(w, r)
 		return
 	}
 
-	payload := Queue{
-		Branch: branchString,
-		Id:     "",
-		Logs:   nil,
+	payload := map[string]interface{}{
+		"Branch": branchString,
+		"Footer": GetFooterText(branchCode),
 	}
 	if err := theApp.TemplateSearch.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -267,7 +283,8 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	// Translate branch code to name and id
-	branchString, branchID := theApp.GetBranchInfo(vars["branch"])
+	branchCode := vars["branch"]
+	branchString, branchID := theApp.GetBranchInfo(branchCode)
 	if branchString == "" || branchID == -1 {
 		theApp.NotFoundHandler(w, r)
 		return
@@ -291,7 +308,6 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// [TODO] Match logs with displayed data
-	// [TODO] Inactive logs must be greyed out
 	// Assignment must access direct object, for-range makes a copy
 	for i := 0; i < len(theApp.Rooms); i++ {
 		theApp.Rooms[i].Time = "pk -"
@@ -306,7 +322,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		"Branch": branchString,
 		"Id":     room_id,
 		"Rooms":  theApp.Rooms,
-		"Text":   theApp.footer,
+		"Footer": GetFooterText(branchCode),
 	}
 
 	// Render output
