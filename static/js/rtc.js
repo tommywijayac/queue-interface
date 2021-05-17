@@ -4,7 +4,7 @@ function refreshTime() {
 
     var date = new Date();
     // Time
-    var hour = date.getHours();
+    var hour = date.getHours().toString();
     hour = hour.length==1 ? 0 + hour : hour;
     var minute = date.getMinutes().toString();
     minute = minute.length==1 ? 0 + minute : minute;
