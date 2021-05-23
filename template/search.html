@@ -26,7 +26,7 @@
     <body class="container-md text-center p-4">
         {{template "_header" .}}
 
-        <form action="/" method="POST" id="search-form">
+        <form action="/" method="POST" id="search-form" autocomplete="off">
             <label>masukkan nomor antrian</label>
             <br/>
             <div id="qnum" class="d-flex flex-row justify-content-center">
@@ -49,5 +49,6 @@
 
         <!-- Local Javascript -->
         <script src="/static/js/rtc.js"></script>
+        <script src="/static/js/search.js"></script>
     </body>
 </html>
