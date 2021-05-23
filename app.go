@@ -47,6 +47,31 @@ type RoomData struct {
 	Time     string
 }
 
+type neuteredFileSystem struct {
+	fs http.FileSystem
+}
+
+func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
+	f, err := nfs.fs.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := f.Stat()
+	if s.IsDir() {
+		if _, err := nfs.fs.Open("/index.html"); err != nil {
+			closeErr := f.Close()
+			if closeErr != nil {
+				return nil, closeErr
+			}
+
+			return nil, err
+		}
+	}
+
+	return f, nil
+}
+
 func (theApp *App) Initialize(user, password, dbname string) {
 	var err error
 
@@ -126,7 +151,8 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	theApp.Router.HandleFunc("/{branch}/{id}", theApp.DisplayQueueHandler).Methods("GET")
 	theApp.Router.NotFoundHandler = http.HandlerFunc(theApp.NotFoundHandler)
 
-	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	fileserver := http.FileServer(neuteredFileSystem{http.Dir("static")})
+	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fileserver))
 
 	// Parse templates here instead in request to avoid delay
 	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html", "template/_footer.html"))
