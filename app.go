@@ -28,7 +28,6 @@ type App struct {
 	DB       []*sql.DB
 	Branches []BranchData
 	Rooms    []RoomData
-	footer   string
 }
 
 type BranchData struct {
@@ -76,9 +75,7 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	var err error
 
 	// Read configuration file
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	viper.SetConfigType("json")
+	viper.SetConfigFile("./config.json")
 	err = viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -117,9 +114,9 @@ func (theApp *App) Initialize(user, password, dbname string) {
 		panic(fmt.Errorf("ER004: Fatal config error - no Queue to be displayed"))
 	}
 
-	// Connect to database
 	theApp.DB = make([]*sql.DB, len(theApp.Branches))
 	for i, branch := range theApp.Branches {
+		// Connect to database
 		connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s",
 			branch.DatabaseUser,
 			branch.DatabasePswd,
@@ -132,14 +129,6 @@ func (theApp *App) Initialize(user, password, dbname string) {
 		if err != nil {
 			panic("sql open err" + err.Error())
 		}
-	}
-
-	viper.SetConfigName("runningtext")
-	err = viper.ReadInConfig()
-	if err == nil {
-		theApp.footer = viper.GetString("text")
-	} else {
-		theApp.footer = ""
 	}
 
 	// Initialize routes
@@ -188,11 +177,17 @@ func SanitizeID(id string) (string, error) {
 	return idClean, nil
 }
 
+func ValidateID(id string) bool {
+	// Validate queue number
+	validQueueExp := regexp.MustCompile("^[a-zA-Z]{1}[0-9]{3}$")
+	return validQueueExp.MatchString(id)
+}
+
 func GetFooterText(branchCode string) string {
 	var footer string
-	viper.SetConfigName("runningtext")
-	viper.AddConfigPath(".")
-	viper.SetConfigType("json")
+
+	// Read footer from runningtext.json
+	viper.SetConfigFile("./runningtext.json")
 	err := viper.ReadInConfig()
 	if err != nil {
 		// by keeping footer as empty text, it won't be displayed
@@ -227,7 +222,7 @@ func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	payload := map[string]interface{}{
 		"Branches": branchNames,
-		"Footer":   theApp.footer,
+		"Footer":   "",
 	}
 	if err := theApp.TemplateHome.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -283,15 +278,12 @@ func (theApp *App) SearchPostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// [TODO] basic validation should be done in front end with JS? like 4 digit must be full
-	// 		  first digit must be alphabet and 3 others must be number
+
 	fullId := r.FormValue("qinput1") + r.FormValue("qinput2") + r.FormValue("qinput3") + r.FormValue("qinput4")
 	fmt.Println(fullId)
 
 	// Validate queue number
-	validQueueExp := regexp.MustCompile("^[a-zA-Z]{1}[0-9]{3}$")
-	valid := validQueueExp.MatchString(fullId)
-	if !valid {
+	if valid := ValidateID(fullId); !valid {
 		http.Error(w, "ERR: Invalid Queue number", http.StatusInternalServerError)
 		return
 	}
@@ -313,7 +305,13 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get id from URL. Remove any leading zeroes
+	// Validate queue number
+	if valid := ValidateID(vars["id"]); !valid {
+		http.Error(w, "ERR: Invalid Queue number", http.StatusInternalServerError)
+		return
+	}
+
+	// Remove any leading zeroes
 	idClean, err := SanitizeID(vars["id"])
 	//fmt.Println(idClean)
 
