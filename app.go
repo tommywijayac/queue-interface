@@ -71,7 +71,7 @@ func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
 	return f, nil
 }
 
-func (theApp *App) Initialize(user, password, dbname string) {
+func (theApp *App) Initialize() {
 	var err error
 
 	// Read configuration file
@@ -86,6 +86,7 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	}
 
 	// Read branch configuration
+	viper.SetDefault("branch", "")
 	err = viper.UnmarshalKey("branch", &theApp.Branches)
 	if err != nil {
 		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s \n", err.Error()))
