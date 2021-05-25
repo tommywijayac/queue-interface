@@ -25,12 +25,9 @@ type App struct {
 	TemplateDisplay *template.Template
 	TemplateError   *template.Template
 
-	DB           []*sql.DB
-	Branches     []BranchData
-	Rooms        []RoomData
-	limitRooms   int
-	visibleRooms int
-	footer       string
+	DB       []*sql.DB
+	Branches []BranchData
+	Rooms    []RoomData
 }
 
 type BranchData struct {
@@ -49,13 +46,36 @@ type RoomData struct {
 	Time     string
 }
 
-func (theApp *App) Initialize(user, password, dbname string) {
+type neuteredFileSystem struct {
+	fs http.FileSystem
+}
+
+func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
+	f, err := nfs.fs.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := f.Stat()
+	if s.IsDir() {
+		if _, err := nfs.fs.Open("/index.html"); err != nil {
+			closeErr := f.Close()
+			if closeErr != nil {
+				return nil, closeErr
+			}
+
+			return nil, err
+		}
+	}
+
+	return f, nil
+}
+
+func (theApp *App) Initialize() {
 	var err error
 
 	// Read configuration file
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	viper.SetConfigType("json")
+	viper.SetConfigFile("./config.json")
 	err = viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -94,9 +114,9 @@ func (theApp *App) Initialize(user, password, dbname string) {
 		panic(fmt.Errorf("ER004: Fatal config error - no Queue to be displayed"))
 	}
 
-	// Connect to database
 	theApp.DB = make([]*sql.DB, len(theApp.Branches))
 	for i, branch := range theApp.Branches {
+		// Connect to database
 		connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s",
 			branch.DatabaseUser,
 			branch.DatabasePswd,
@@ -111,14 +131,6 @@ func (theApp *App) Initialize(user, password, dbname string) {
 		}
 	}
 
-	viper.SetConfigName("runningtext")
-	err = viper.ReadInConfig()
-	if err == nil {
-		theApp.footer = viper.GetString("text")
-	} else {
-		theApp.footer = ""
-	}
-
 	// Initialize routes
 	theApp.Router = mux.NewRouter()
 	theApp.Router.HandleFunc("/", theApp.HomeHandler).Methods("GET")
@@ -128,13 +140,14 @@ func (theApp *App) Initialize(user, password, dbname string) {
 	theApp.Router.HandleFunc("/{branch}/{id}", theApp.DisplayQueueHandler).Methods("GET")
 	theApp.Router.NotFoundHandler = http.HandlerFunc(theApp.NotFoundHandler)
 
-	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	fileserver := http.FileServer(neuteredFileSystem{http.Dir("static")})
+	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fileserver))
 
 	// Parse templates here instead in request to avoid delay
-	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
-	theApp.TemplateSearch = template.Must(template.ParseFiles("template/search.html", "template/_header.html"))
-	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html"))
-	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html"))
+	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html", "template/_footer.html"))
+	theApp.TemplateSearch = template.Must(template.ParseFiles("template/search.html", "template/_header.html", "template/_footer.html"))
+	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
+	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html", "template/_footer.html"))
 }
 
 func (theApp *App) Run(addr string) {
@@ -154,14 +167,37 @@ func (theApp *App) Run(addr string) {
 }
 
 func SanitizeID(id string) (string, error) {
-	expNoPrefixZeroes, err := regexp.Compile("^0+(?!$)")
+	expNoPrefixZeroes, err := regexp.Compile(`^0+`)
 	if err != nil {
-		return id, err
+		fmt.Printf("err cleaning ID! %s\n", err.Error())
+		return "", err
 	}
-	idClean := expNoPrefixZeroes.ReplaceAllString(id, "")
-	fmt.Println(idClean)
+	cleanId := expNoPrefixZeroes.ReplaceAllString(id, "")
+	fmt.Println(cleanId)
 
-	return idClean, nil
+	return cleanId, nil
+}
+
+func ValidateID(id string) bool {
+	// Validate queue number
+	validQueueExp := regexp.MustCompile(`^[a-zA-Z]{1}[0-9]{3}$`)
+	return validQueueExp.MatchString(id)
+}
+
+func GetFooterText(branchCode string) string {
+	var footer string
+
+	// Read footer from runningtext.json
+	viper.SetConfigFile("./runningtext.json")
+	err := viper.ReadInConfig()
+	if err != nil {
+		// by keeping footer as empty text, it won't be displayed
+		footer = ""
+	} else {
+		footer = viper.GetString(branchCode)
+	}
+
+	return footer
 }
 
 func (theApp *App) GetBranchInfo(branchCode string) (string, int) {
@@ -187,9 +223,8 @@ func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	payload := map[string]interface{}{
 		"Branches": branchNames,
-		"Text":     theApp.footer,
+		"Footer":   "",
 	}
-
 	if err := theApp.TemplateHome.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -222,16 +257,16 @@ func (theApp *App) HomePostHandler(w http.ResponseWriter, r *http.Request) {
 func (theApp *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// Since we use variable URL, NotFoundHandler can't catch this
-	branchString, _ := theApp.GetBranchInfo(vars["branch"])
+	branchCode := vars["branch"]
+	branchString, _ := theApp.GetBranchInfo(branchCode)
 	if branchString == "" {
 		theApp.NotFoundHandler(w, r)
 		return
 	}
 
-	payload := Queue{
-		Branch: branchString,
-		Id:     "",
-		Logs:   nil,
+	payload := map[string]interface{}{
+		"Branch": branchString,
+		"Footer": GetFooterText(branchCode),
 	}
 	if err := theApp.TemplateSearch.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -244,21 +279,18 @@ func (theApp *App) SearchPostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// [TODO] basic validation should be done in front end with JS? like 4 digit must be full
-	// 		  first digit must be alphabet and 3 others must be number
+
 	fullId := r.FormValue("qinput1") + r.FormValue("qinput2") + r.FormValue("qinput3") + r.FormValue("qinput4")
 	fmt.Println(fullId)
 
 	// Validate queue number
-	validQueueExp := regexp.MustCompile("^[a-zA-Z]{1}[0-9]{3}$")
-	valid := validQueueExp.MatchString(fullId)
-	if !valid {
+	if valid := ValidateID(fullId); !valid {
 		http.Error(w, "ERR: Invalid Queue number", http.StatusInternalServerError)
 		return
 	}
 
 	// [TODO] locked to http:// ?
-	userURL := fmt.Sprintf("http://%s/%s/%s", r.Host, r.URL.Path, string(fullId[1:]))
+	userURL := fmt.Sprintf("http://%s%s/%s", r.Host, r.URL.Path, string(fullId))
 	fmt.Println(userURL)
 	http.Redirect(w, r, userURL, http.StatusSeeOther)
 }
@@ -267,15 +299,21 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	// Translate branch code to name and id
-	branchString, branchID := theApp.GetBranchInfo(vars["branch"])
+	branchCode := vars["branch"]
+	branchString, branchID := theApp.GetBranchInfo(branchCode)
 	if branchString == "" || branchID == -1 {
 		theApp.NotFoundHandler(w, r)
 		return
 	}
 
-	// Get id from URL. Remove any leading zeroes
+	// Validate queue number
+	// if valid := ValidateID(vars["id"]); !valid {
+	// 	http.Error(w, "ERR: Invalid Queue number", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// Remove any leading zeroes
 	idClean, err := SanitizeID(vars["id"])
-	//fmt.Println(idClean)
 
 	// [TODO] update database query based on actual database design
 	room_id, logs, err := GetQueueLogs(theApp.DB[branchID], idClean)
@@ -291,7 +329,6 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// [TODO] Match logs with displayed data
-	// [TODO] Inactive logs must be greyed out
 	// Assignment must access direct object, for-range makes a copy
 	for i := 0; i < len(theApp.Rooms); i++ {
 		theApp.Rooms[i].Time = "pk -"
@@ -306,7 +343,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		"Branch": branchString,
 		"Id":     room_id,
 		"Rooms":  theApp.Rooms,
-		"Text":   theApp.footer,
+		"Footer": GetFooterText(branchCode),
 	}
 
 	// Render output

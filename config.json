@@ -1,22 +1,22 @@
 {
     "branch" : [
         {
-            "name": "Kebon Jeruk",
             "code": "kbj",
+            "name": "Kebon Jeruk",
             "db-addr": "127.0.0.1:3306",
             "db-user": "root",
             "db-pswd": "",
             "db-name": "kmn_queue"
         }, {
-            "name": "Kemayoran",
             "code": "kmy",
+            "name": "Kemayoran",
             "db-addr": "127.0.0.1:3306",
             "db-user": "root",
             "db-pswd": "",
             "db-name": "kmn_queue"
         }, {
-            "name": "Jakarta Selatan",
             "code": "jsl",
+            "name": "Jakarta Selatan",
             "db-addr": "127.0.0.1:3306",
             "db-user": "root",
             "db-pswd": "",

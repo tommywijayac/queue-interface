@@ -15,32 +15,24 @@
         <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-        
+
         <!-- Fake favicon, to avoid extra request to server -->
-        <link rel="icon" type="image/png" href="/static/assets/logo-sm.ico">
+        <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=">
 
         <title>
             KMN Antrian
         </title>
     </head>
-    <body class="d-flex flex-column">
-        <form action="/" method="POST">
-            <div class="container text-center p-5">
-                <div class="col justify-content-center">
-                    <div class="h5">pilih lokasi klinik:</div>
-    
-                    <div class="m-1">&nbsp;</div>
-        
-                    {{ range $index, $branch := .Branches }}
-                        <button type="submit" class="branch-card" value="{{ $index }}" name="branch">
-                            <span><img src="/static/assets/logo-sm.png" alt="KMN" width=100px height=auto></span>
-                            <div class="h4" style="font-weight: normal;">{{ $branch }}</div>
-                        </button>
-            
-                        <div class="m-1">&nbsp;</div>
-                    {{ end }}
-                </div>
+    <body class="d-flex flex-column justify-content-center align-item-center">
+        <div class="container text-center">
+            <div class="column justify-content-center">
+                <img src="/static/assets/logo-lg.png" alt="KMN" width=150px height=auto>
+                <div class="m-4"></div>
+                <div class="display-3 font-weight-bold">404</div>
+                <div class="display-4">halaman tak ditemukan</div>
+                <div class="m-4"></div>
+                <a class="btn btn-primary kmn-theme" href="/">kembali</a>
             </div>
-        </form>
+        </div>
     </body>
 </html>
