@@ -33,10 +33,11 @@ function QueueNumberInput() {
                         inputs[i].value = '';
                         inputs[i-1].focus();
                     }
+                } else if (event.key == "Enter") {
+                    // Pass-through, else got processed and considered wrong combination
+                    return true;
                 } else {
-                    if (i === inputs.length - 1 && inputs[i].value !== '') {
-                        return true;
-                    } else if (event.keyCode > 47 && event.keyCode < 58) {
+                    if (event.keyCode > 47 && event.keyCode < 58) {
                         inputs[i].value = event.key;
                         if (i !== inputs.length - 1)
                             inputs[i + 1].focus();

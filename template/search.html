@@ -27,13 +27,13 @@
         {{template "_header" .}}
 
         <form action="/" method="POST" id="search-form" autocomplete="off">
-            <label>masukkan nomor antrian</label>
+            <label>masukkan nomor antrian anda</label>
             <br/>
             <div id="qnum" class="d-flex flex-row justify-content-center">
-                <input class="qinput mx-2 rounded" id="qinput1" type="[a-zA-Z]{1}" maxlength="1"/>
-                <input class="qinput mx-2 rounded" id="qinput2" pattern="[0-9]{1}" type="number" min="0" max="9"/>
-                <input class="qinput mx-2 rounded" id="qinput3" pattern="[0-9]{1}" type="number" min="0" max="9"/>
-                <input class="qinput mx-2 rounded" id="qinput4" pattern="[0-9]{1}" type="number" min="0" max="9"/>
+                <input class="qinput mx-2 rounded" id="qinput1" name="qinput1" type="[a-zA-Z]{1}" maxlength="1"/>
+                <input class="qinput mx-2 rounded" id="qinput2" name="qinput2" pattern="[0-9]{1}" type="number" min="0" max="9"/>
+                <input class="qinput mx-2 rounded" id="qinput3" name="qinput3" pattern="[0-9]{1}" type="number" min="0" max="9"/>
+                <input class="qinput mx-2 rounded" id="qinput4" name="qinput4" pattern="[0-9]{1}" type="number" min="0" max="9"/>
             </div>
             <!-- [TODO] adjust width -->
             <hr class="hr-highlight"/>
