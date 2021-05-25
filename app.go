@@ -86,7 +86,6 @@ func (theApp *App) Initialize() {
 	}
 
 	// Read branch configuration
-	viper.SetDefault("branch", "")
 	err = viper.UnmarshalKey("branch", &theApp.Branches)
 	if err != nil {
 		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s \n", err.Error()))
@@ -168,19 +167,20 @@ func (theApp *App) Run(addr string) {
 }
 
 func SanitizeID(id string) (string, error) {
-	expNoPrefixZeroes, err := regexp.Compile("^0+(?!$)")
+	expNoPrefixZeroes, err := regexp.Compile(`^0+`)
 	if err != nil {
-		return id, err
+		fmt.Printf("err cleaning ID! %s\n", err.Error())
+		return "", err
 	}
-	idClean := expNoPrefixZeroes.ReplaceAllString(id, "")
-	fmt.Println(idClean)
+	cleanId := expNoPrefixZeroes.ReplaceAllString(id, "")
+	fmt.Println(cleanId)
 
-	return idClean, nil
+	return cleanId, nil
 }
 
 func ValidateID(id string) bool {
 	// Validate queue number
-	validQueueExp := regexp.MustCompile("^[a-zA-Z]{1}[0-9]{3}$")
+	validQueueExp := regexp.MustCompile(`^[a-zA-Z]{1}[0-9]{3}$`)
 	return validQueueExp.MatchString(id)
 }
 
@@ -290,7 +290,7 @@ func (theApp *App) SearchPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// [TODO] locked to http:// ?
-	userURL := fmt.Sprintf("http://%s/%s/%s", r.Host, r.URL.Path, string(fullId[1:]))
+	userURL := fmt.Sprintf("http://%s%s/%s", r.Host, r.URL.Path, string(fullId))
 	fmt.Println(userURL)
 	http.Redirect(w, r, userURL, http.StatusSeeOther)
 }
@@ -307,14 +307,13 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate queue number
-	if valid := ValidateID(vars["id"]); !valid {
-		http.Error(w, "ERR: Invalid Queue number", http.StatusInternalServerError)
-		return
-	}
+	// if valid := ValidateID(vars["id"]); !valid {
+	// 	http.Error(w, "ERR: Invalid Queue number", http.StatusInternalServerError)
+	// 	return
+	// }
 
 	// Remove any leading zeroes
 	idClean, err := SanitizeID(vars["id"])
-	//fmt.Println(idClean)
 
 	// [TODO] update database query based on actual database design
 	room_id, logs, err := GetQueueLogs(theApp.DB[branchID], idClean)
