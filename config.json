@@ -21,6 +21,20 @@
             "db-user": "root",
             "db-pswd": "",
             "db-name": "kmn_queue"
+        }, {
+            "code": "pik",
+            "name": "Pantai Indah Kapuk",
+            "db-addr": "127.0.0.1:3306",
+            "db-user": "root",
+            "db-pswd": "",
+            "db-name": "kmn_queue"
+        }, {
+            "code": "smg",
+            "name": "Semarang",
+            "db-addr": "127.0.0.1:3306",
+            "db-user": "root",
+            "db-pswd": "",
+            "db-name": "kmn_queue"
         }
     ],
     "visible-room" : 3,

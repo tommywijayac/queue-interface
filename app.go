@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"reflect"
+	"regexp"
 	"strconv"
 	"text/template"
 	"time"
-
-	"regexp"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -30,6 +30,17 @@ type App struct {
 	Rooms    []RoomData
 }
 
+type RoomData struct {
+	Name string `mapstructure:"name"`
+	Code string `mapstructure:"code"`
+}
+
+type RoomDisplay struct {
+	IsActive bool
+	Name     string
+	Time     string
+}
+
 type BranchData struct {
 	Name         string `mapstructure:"name"`
 	Code         string `mapstructure:"code"`
@@ -39,15 +50,14 @@ type BranchData struct {
 	DatabaseName string `mapstructure:"db-name"`
 }
 
-type RoomData struct {
-	IsActive bool
-	Name     string `mapstructure:"name"`
-	Code     string `mapstructure:"code"`
-	Time     string
-}
-
 type neuteredFileSystem struct {
 	fs http.FileSystem
+}
+
+var fns = template.FuncMap{
+	"last": func(x int, a interface{}) bool {
+		return x == reflect.ValueOf(a).Len()-1
+	},
 }
 
 func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
@@ -146,7 +156,7 @@ func (theApp *App) Initialize() {
 	// Parse templates here instead in request to avoid delay
 	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html", "template/_footer.html"))
 	theApp.TemplateSearch = template.Must(template.ParseFiles("template/search.html", "template/_header.html", "template/_footer.html"))
-	theApp.TemplateDisplay = template.Must(template.ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
+	theApp.TemplateDisplay = template.Must(template.New("queue.html").Funcs(fns).ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
 	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html", "template/_footer.html"))
 }
 
@@ -307,17 +317,15 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate queue number
-	// if valid := ValidateID(vars["id"]); !valid {
-	// 	http.Error(w, "ERR: Invalid Queue number", http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// Remove any leading zeroes
-	idClean, err := SanitizeID(vars["id"])
+	idClean := vars["id"]
+	if valid := ValidateID(idClean); !valid {
+		http.Error(w, "ERR: Invalid Queue number", http.StatusInternalServerError)
+		// [TODO] redirect to index/search
+		return
+	}
 
 	// [TODO] update database query based on actual database design
-	room_id, logs, err := GetQueueLogs(theApp.DB[branchID], idClean)
-	fmt.Println(logs)
+	logs, err := GetQueueLogs(theApp.DB[branchID], idClean)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -327,22 +335,12 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	// [TODO] Match logs with displayed data
-	// Assignment must access direct object, for-range makes a copy
-	for i := 0; i < len(theApp.Rooms); i++ {
-		theApp.Rooms[i].Time = "pk -"
-		if i == len(theApp.Rooms)-2 {
-			theApp.Rooms[i].IsActive = true
-		} else {
-			theApp.Rooms[i].IsActive = false
-		}
-	}
+	roomDisplay := theApp.AssignLogsToTemplate(logs)
 
 	payload := map[string]interface{}{
 		"Branch": branchString,
-		"Id":     room_id,
-		"Rooms":  theApp.Rooms,
+		"Id":     idClean,
+		"Rooms":  roomDisplay,
 		"Footer": GetFooterText(branchCode),
 	}
 
@@ -357,4 +355,32 @@ func (theApp *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	if tmplErr := theApp.TemplateError.Execute(w, nil); tmplErr != nil {
 		http.Error(w, tmplErr.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (theApp *App) AssignLogsToTemplate(logs []QueueLog) []RoomDisplay {
+	var roomDisplays []RoomDisplay
+
+	for i, room := range theApp.Rooms {
+		var rd = RoomDisplay{
+			Name:     room.Name,
+			Time:     "pk -",
+			IsActive: false,
+		}
+
+		for _, log := range logs {
+			if theApp.Rooms[i].Code == log.Room[:1] {
+				rd.Time = "pk. " + log.Time
+				rd.Name = fmt.Sprintf("%s %s", theApp.Rooms[i].Name, log.Room[1:])
+				rd.IsActive = true
+				if i > 0 {
+					roomDisplays[i-1].IsActive = false
+				}
+				break
+			}
+		}
+
+		roomDisplays = append(roomDisplays, rd)
+	}
+
+	return roomDisplays
 }
