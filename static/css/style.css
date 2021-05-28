@@ -113,7 +113,7 @@ footer {
 .fadein-out {
     animation: fadein_out 5s ease-out;
     animation-iteration-count: 1;
-  }
+}
   
 @keyframes fadein_out {
     10% {
