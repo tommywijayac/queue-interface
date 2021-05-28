@@ -1,5 +1,13 @@
+const warning = document.getElementById("warning");
+
+warning.addEventListener("animationend", function() {
+    warning.style.display = "none";
+});
+
 function ShowWarning(input) {
-    var warning = document.getElementById("warning");
+    warning.innerHTML = "antrian harus diawali dengan huruf, diikuti dengan tiga angka (contoh: A001)";
+    warning.style.display = "block";
+
     warning.classList.remove("fadein-out");
     // Trigger reflow. 'Magic' in order for animation can be triggered on every click
     warning.offsetWidth = warning.offsetWidth;

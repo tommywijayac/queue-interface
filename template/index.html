@@ -6,41 +6,86 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
         <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+        <link rel="stylesheet" href="../static/css/bootstrap.min.css">
+        <link rel="stylesheet" href="../static/css/bootstrap-select.min.css">        
         <!-- Local CSS -->
-        <link rel="stylesheet" href="/static/css/style.css">
+        <link rel="stylesheet" href="../static/css/style.css">
 
         <!-- Optional JavaScript -->
-        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-        <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+        <!-- jQuery first, then Bootstrap Bundle JS (including Popper JS). Also add bootstrap-select -->
+        <script src="../static/js/jquery-3.6.0.min.js"></script>
+        <script src="../static/js/bootstrap.bundle.min.js"></script>
+        <script src="../static/js/bootstrap-select.min.js"></script>
         
-        <!-- Fake favicon, to avoid extra request to server -->
-        <link rel="icon" type="image/png" href="/static/assets/logo-sm.ico">
+        <!-- Handle favicon -->
+        <link rel="icon" type="image/png" href="../static/assets/logo-sm.ico">
 
         <title>
             KMN Antrian
         </title>
     </head>
-    <body class="d-flex flex-column">
-        <form action="/" method="POST">
-            <div class="container text-center p-5">
-                <div class="col justify-content-center">
-                    <div class="h5">pilih lokasi klinik:</div>
-    
-                    <div class="m-1">&nbsp;</div>
-        
-                    {{ range $index, $branch := .Branches }}
-                        <button type="submit" class="branch-card" value="{{ $index }}" name="branch">
-                            <span><img src="/static/assets/logo-sm.png" alt="KMN" width=100px height=auto></span>
-                            <div class="h4" style="font-weight: normal;">{{ $branch }}</div>
-                        </button>
+    <body class="h-100">
+        <div class="container text-center p-5">
+            <div class="row justify-content-center align-items-center">
+                <div class="col-sm-8">
+                    {{template "_header" .}}
+
+                    <form action="/" id="search-form" method="POST" autocomplete="off">
+                        <div>
+                            <p class="h5">Selamat datang di KMN EyeCare</p>
+                            <p>Untuk mengetahui progress antrian Anda, silakan pilih lokasi KMN EyeCare Anda dan masukkan nomor antrian Anda. Terima kasih</p>
+                        </div>
             
                         <div class="m-1">&nbsp;</div>
-                    {{ end }}
+
+                        <label class="mb-3">pilih lokasi:</label>
+                        <div style="text-align-last: center;">
+                            <select class="selectpicker w-100" style="text-align-last: center;" name="location">
+                                {{ range $index, $branch := .Branches }}
+                                    <option value="{{ $index }}" class="text-center">{{ $branch }}</option>
+                                {{ end }}
+                            </select>
+                        </div>
+
+                        <div class="m-1">&nbsp;</div>
+
+                        <label class="mb-3">pilih proses:</label>
+                        <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                            <label class="btn btn-outline-primary w-100 active p-3">
+                                <input type="radio" class="btn-check" name="options" autocomplete="off" checked>Operasi
+                            </label>
+                            <label class="btn btn-outline-primary w-100 p-3">
+                                <input type="radio" class="btn-check" name="options" autocomplete="off">Poli / Rawat Jalan
+                            </label>
+                        </div>
+
+                        <div class="m-1">&nbsp;</div>
+
+                        <label class="mb-3">masukkan nomor antrian:</label>
+                        <div id="qnum-container">
+                            <div id="qnum" class="d-flex flex-row justify-content-center mb-3">
+                                <input class="qinput mx-2 rounded" id="qinput1" name="qinput1" type="[a-zA-Z]{1}" maxlength="1" required/>
+                                <input class="qinput mx-2 rounded" id="qinput2" name="qinput2" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
+                                <input class="qinput mx-2 rounded" id="qinput3" name="qinput3" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
+                                <input class="qinput mx-2 rounded" id="qinput4" name="qinput4" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
+                            </div>
+                            <div class="h-5" style="color:red; opacity: 0; display:none;" id="warning">warning</div>
+                        </div>
+
+                        <div class="m-1">&nbsp;</div>
+                        
+                        <button type="submit" class="btn btn-primary kmn-theme">lihat</button>
+                    </form>
                 </div>
             </div>
-        </form>
+        </div>
+
+        <script>
+            $(document).ready(function () {
+                $('.selectpicker').selectpicker();
+            });
+        </script>
+        <script src="../static/js/rtc.js"></script>
+        <script src="../static/js/search.js"></script>        
     </body>
 </html>
