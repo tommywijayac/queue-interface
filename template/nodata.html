@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+        <!-- Local CSS -->
+        <link rel="stylesheet" href="/static/css/style.css">
+
+        <!-- Optional JavaScript -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script src="/static/js/jquery-3.6.0.min.js"></script>
+        <script src="/static/js/bootstrap.bundle.min.js"></script>
+
+        <!-- Handle favicon -->
+        <link rel="icon" type="image/png" href="/static/assets/logo-sm.ico">
+
+        <title>
+            KMN Antrian
+        </title>
+    </head>
+    <body class="d-flex flex-column justify-content-center align-item-center p-5">
+        <div class="container text-center">
+            <div class="column justify-content-center">
+                <img src="/static/assets/logo-lg.png" alt="KMN" width=150px height=auto>
+                <div class="m-4"></div>
+                <div class="display-4">Data pasien {{ .Id }} tidak tersedia</div>
+                <div class="m-4"></div>
+                <a class="btn btn-primary kmn-theme" href="/">kembali</a>
+            </div>
+        </div>
+    </body>
+</html>

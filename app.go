@@ -64,6 +64,7 @@ type App struct {
 	TemplateSearch  *template.Template
 	TemplateDisplay *template.Template
 	TemplateError   *template.Template
+	TemplateNoData  *template.Template
 
 	DB       []*sql.DB
 	Branches []BranchData
@@ -245,8 +246,6 @@ func (theApp *App) Initialize() {
 			branch.DatabaseAddr,
 			branch.DatabaseName)
 
-		fmt.Println(connectionString)
-
 		theApp.DB[i], err = sql.Open("mysql", connectionString)
 		if err != nil {
 			panic("sql open err" + err.Error())
@@ -265,6 +264,7 @@ func (theApp *App) Initialize() {
 	// Template caching: parse templates here instead in request to avoid delay
 	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
 	theApp.TemplateDisplay = template.Must(template.New("queue.html").Funcs(fns).ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
+	theApp.TemplateNoData = template.Must(template.ParseFiles("template/nodata.html", "template/_header.html"))
 	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html"))
 }
 
@@ -387,7 +387,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			http.Error(w, "200 Data not found", http.StatusInternalServerError)
+			theApp.NoDataTemplateDisplay(w, r, fullId)
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -404,7 +404,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(roomDisplay) == 0 {
-		http.Error(w, "200 Data not found", http.StatusInternalServerError)
+		theApp.NoDataTemplateDisplay(w, r, fullId)
 	}
 
 	payload := map[string]interface{}{
@@ -424,6 +424,16 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 func (theApp *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	if tmplErr := theApp.TemplateError.Execute(w, nil); tmplErr != nil {
 		http.Error(w, tmplErr.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (theApp *App) NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id string) {
+	payload := map[string]interface{}{
+		"Id": id,
+	}
+
+	if err := theApp.TemplateNoData.Execute(w, payload); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 

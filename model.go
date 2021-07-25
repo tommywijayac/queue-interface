@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 )
@@ -82,7 +81,7 @@ func GetQueueLogs(db *sql.DB, id string) ([]PatientLog, error) {
 	}
 
 	if len(logs) == 0 {
-		return nil, errors.New("Data tidak ditemukan")
+		return nil, sql.ErrNoRows
 	} else {
 		return logs, nil
 	}
