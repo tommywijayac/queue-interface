@@ -42,8 +42,6 @@ button.branch-card:focus {
 }
 
 div.queue-card {
-    /* TODO: how much?*/
-    width: 400px;
     text-align: center;
     padding: 10px;
 
@@ -74,7 +72,7 @@ footer {
     overflow: hidden;
 }
 
-#sticky-footer {
+/* #sticky-footer {
     background-color:gold;
     
     position: -webkit-sticky;
@@ -88,13 +86,11 @@ footer {
 
     overflow-y: auto;
     overflow-x: hidden;
-}
+} */
 
 /* OTP-like input */
 .qinput {
-    width: 90px;
-    height: 90px;
-    font-size: 50px;
+    font-size: 40px;
     text-align: center;
 
     transition: all 0.15s ease-in-out;
@@ -113,7 +109,7 @@ footer {
 .fadein-out {
     animation: fadein_out 5s ease-out;
     animation-iteration-count: 1;
-  }
+}
   
 @keyframes fadein_out {
     10% {

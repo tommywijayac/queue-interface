@@ -3,72 +3,171 @@
         {
             "code": "kbj",
             "name": "Kebon Jeruk",
-            "db-addr": "127.0.0.1:3306",
+            "db-addr": "127.0.0.1:3300",
             "db-user": "root",
             "db-pswd": "",
             "db-name": "kmn_queue"
         }, {
             "code": "kmy",
             "name": "Kemayoran",
-            "db-addr": "127.0.0.1:3306",
+            "db-addr": "127.0.0.1:3300",
             "db-user": "root",
             "db-pswd": "",
             "db-name": "kmn_queue"
         }, {
             "code": "jsl",
             "name": "Jakarta Selatan",
-            "db-addr": "127.0.0.1:3306",
+            "db-addr": "127.0.0.1:3300",
             "db-user": "root",
             "db-pswd": "",
             "db-name": "kmn_queue"
         }, {
             "code": "pik",
             "name": "Pantai Indah Kapuk",
-            "db-addr": "127.0.0.1:3306",
+            "db-addr": "127.0.0.1:3300",
             "db-user": "root",
             "db-pswd": "",
             "db-name": "kmn_queue"
         }, {
             "code": "smg",
             "name": "Semarang",
-            "db-addr": "127.0.0.1:3306",
+            "db-addr": "127.0.0.1:3300",
             "db-user": "root",
             "db-pswd": "",
             "db-name": "kmn_queue"
         }
     ],
-    "visible-room" : 3,
-    "room" : [
-        { 
-            "name": "R. Persiapan Tindakan",
-            "code": "R"
-        }, {
-            "name": "R. Tindakan",
-            "code": "O"
-        }, {
-            "name": "R. Pemulihan",
-            "code": "P"
-        } , {
-            "name": "",
-            "code": ""
-        } , {
-            "name": "",
-            "code": ""
-        } , {
-            "name": "",
-            "code": ""
-        } , {
-            "name": "",
-            "code": ""
-        } , {
-            "name": "",
-            "code": ""
-        } , {
-            "name": "",
-            "code": ""
-        } , {
-            "name": "",
-            "code": ""
-        }        
-    ]
+
+    "process" : {
+        "opr" : {
+            "visible-room": 3,
+            "room" : [
+                {
+                    "name": "R. Persiapan Tindakan",
+                    "code": "X",
+                    "group-code": "GX",
+                    "order": 1
+                }, {
+                    "name": "R. Tindakan",
+                    "code": "Y",
+                    "group-code": "GY",
+                    "order": 2
+                }, {
+                    "name": "R. Pemulihan",
+                    "code": "Z",
+                    "group-code": "GZ",
+                    "order": 3
+                }
+            ]
+        } ,
+        "pol" : {
+            "visible-room": 8,
+            "room": [
+                { 
+                    "name": "Registrasi",
+                    "code": "A",
+                    "group-code": "GA"
+                }, {
+                    "name": "Rekam Medik",
+                    "code": "B",
+                    "group-code": "GA"
+                }, {
+                    "name": "Pemeriksaan Awal",
+                    "code": "C",
+                    "group-code": "GB"
+                } , {
+                    "name": "Refraksi",
+                    "code": "D",
+                    "group-code": "GB"
+                } , {
+                    "name": "R. Konsul",
+                    "code": "E",
+                    "group-code": "GC"
+                } , {
+                    "name": "Pemeriksaan Penunjang",
+                    "code": "F",
+                    "group-code": "GC"
+                } , {
+                    "name": "Laboratorium",
+                    "code": "G",
+                    "group-code": "GC"
+                } , {
+                    "name": "R. Tindakan",
+                    "code": "H",
+                    "group-code": "GD"
+                } , {
+                    "name": "",
+                    "code": "",
+                    "group-code": ""
+                } , {
+                    "name": "",
+                    "code": "",
+                    "group-code": ""
+                }        
+            ]
+        }
+    } ,
+
+    "room-note" : {
+        "kbj": {
+            "X": "This is KBJ room X note",
+            "Y": "This is KBJ room Y note",
+            "Z": "This is KBJ room Z note",
+            "A": "This is KBJ room A note",
+            "B": "This is KBJ room B note",
+            "C": "This is KBJ room C note",
+            "D": "This is KBJ room D note",
+            "E": "This is KBJ room E note",
+            "F": "This is KBJ room F note",
+            "G": "This is KBJ room G note"
+        } ,
+        "kmy": {
+            "X": "This is KMY room X note",
+            "Y": "This is KMY room Y note",
+            "Z": "This is KMY room Z note",
+            "A": "This is KMY room A note",
+            "B": "This is KMY room B note",
+            "C": "This is KMY room C note",
+            "D": "This is KMY room D note",
+            "E": "This is KMY room E note",
+            "F": "This is KMY room F note",
+            "G": "This is KMY room G note"
+        } ,
+        "jsl": {
+            "X": "This is JSL room X note",
+            "Y": "This is JSL room Y note",
+            "Z": "This is JSL room Z note",
+            "A": "This is JSL room A note",
+            "B": "This is JSL room B note",
+            "C": "This is JSL room C note",
+            "D": "This is JSL room D note",
+            "E": "This is JSL room E note",
+            "F": "This is JSL room F note",
+            "G": "This is JSL room G note"
+        } ,
+        "pik": {
+            "X": "This is PIK room X note",
+            "Y": "This is PIK room Y note",
+            "Z": "This is PIK room Z note",
+            "A": "This is PIK room A note",
+            "B": "This is PIK room B note",
+            "C": "This is PIK room C note",
+            "D": "This is PIK room D note",
+            "E": "This is PIK room E note",
+            "F": "This is PIK room F note",
+            "G": "This is PIK room G note"
+        } ,
+        "smg": {
+            "X": "This is SMG room X note",
+            "Y": "This is SMG room Y note",
+            "Z": "This is SMG room Z note",
+            "A": "This is SMG room A note",
+            "B": "This is SMG room B note",
+            "C": "This is SMG room C note",
+            "D": "This is SMG room D note",
+            "E": "This is SMG room E note",
+            "F": "This is SMG room F note",
+            "G": "This is SMG room G note"
+        }
+    }
 }

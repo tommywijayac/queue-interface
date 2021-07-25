@@ -2,22 +2,52 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
+	"time"
 )
 
 // [TODO] actual database field type may be different. modify here
 // Store raw database data
-type QueueLog struct {
-	Room string
-	Time string
+type PatientLog struct {
+	Room string    `json:"room"`
+	Time time.Time `json:"time"`
+}
+type Patient struct {
+	Records []PatientLog `json:"records"`
 }
 
-func GetQueueLogs(db *sql.DB, id string) ([]QueueLog, error) {
+// Parse DateTime column according to our need (time only)
+type RawTime []byte
+
+func (t RawTime) Time() (time.Time, error) {
+	return time.Parse("2006-01-02 15:04:05", string(t))
+}
+
+// API call
+// [TODO] latency problem?
+// [TODO] diff branch diff API endpoint
+// dbAPI := fmt.Sprintf("http://localhost:8080/?id=%s&action=I", fullId)
+// response, err := http.Get(dbAPI)
+// if err != nil {
+// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+// }
+// defer response.Body.Close()
+// // [TODO] response header evaluation?
+// responseData, err := ioutil.ReadAll(response.Body)
+// if err != nil {
+// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+// }
+// var patient Patient
+// err = json.Unmarshal(responseData, &patient)
+// if err != nil {
+// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+// }
+
+func GetQueueLogs(db *sql.DB, id string) ([]PatientLog, error) {
 	// Testing purpose: use static date so we dont need to modify sql everyday
 	// [TODO] production must use dynamic time
 	//var date = time.Now().Format("2006-01-02")
-	date := "2021-04-16"
+	date := "2021-04-18"
 
 	// Read data from database
 	rows, err := db.Query("SELECT room_id, time FROM `queue` WHERE (cust_id=? AND date=? AND action=?)", id, date, "I")
@@ -28,14 +58,21 @@ func GetQueueLogs(db *sql.DB, id string) ([]QueueLog, error) {
 
 	defer rows.Close()
 
-	var logs []QueueLog
-	var log QueueLog
+	var logs []PatientLog
+	var log PatientLog
 
 	for rows.Next() {
 		// [TODO] actual database field type may be different. modify here
-		err := rows.Scan(&log.Room, &log.Time)
+		var time RawTime
+		err := rows.Scan(&log.Room, &time)
 		if err != nil {
 			// [TODO] scanning error. should just skip? or how to handle this
+			return nil, err
+		}
+
+		log.Time, err = time.Time()
+		if err != nil {
+			// [TODO] time conversion error
 			return nil, err
 		}
 
@@ -44,18 +81,8 @@ func GetQueueLogs(db *sql.DB, id string) ([]QueueLog, error) {
 	}
 
 	if len(logs) == 0 {
-		return nil, errors.New("Data tidak ditemukan")
+		return nil, sql.ErrNoRows
 	} else {
 		return logs, nil
 	}
-
-	// else
-	// // Reverse the order of histories
-	// // Should be sorted by time inherently because logging is always moving forward
-	// // However we just want to be sure
-	// if len(logs) > 1 {
-	// 	for i, j := 0, len(logs)-1; i < j; i, j = i+1, j-1 {
-	// 		logs[i], logs[j] = logs[j], logs[i]
-	// 	}
-	// }
 }

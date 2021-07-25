@@ -1,5 +1,13 @@
+const warning = document.getElementById("warning");
+
+warning.addEventListener("animationend", function() {
+    warning.style.display = "none";
+});
+
 function ShowWarning(input) {
-    var warning = document.getElementById("warning");
+    warning.innerHTML = "antrian harus diawali dengan huruf, diikuti dengan tiga angka (contoh: A001)";
+    warning.style.display = "block";
+
     warning.classList.remove("fadein-out");
     // Trigger reflow. 'Magic' in order for animation can be triggered on every click
     warning.offsetWidth = warning.offsetWidth;
@@ -11,8 +19,8 @@ function QueueNumberInput() {
     for (let i = 0; i < inputs.length; i++) {
         // Requirement: First character must be character, the other must be number
         if (i === 0) {
-            inputs[i].addEventListener('keydown', function(event) {
-                if (event.keyCode > 64 && event.keyCode < 91) {
+            inputs[i].addEventListener('keypress', function(event) {
+                if ((event.keyCode > 64 && event.keyCode < 91) || (event.keyCode > 96 && event.keyCode < 123)) {
                     inputs[i].value = String.fromCharCode(event.keyCode);
                     if (i !== inputs.length - 1)
                         inputs[i + 1].focus();
@@ -52,5 +60,3 @@ function QueueNumberInput() {
     }
 }
 QueueNumberInput();
-
-document.getElementById("search-form").setAttribute("action", window.location.pathname);
