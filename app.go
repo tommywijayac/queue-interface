@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -274,14 +273,14 @@ func (theApp *App) Run(addr string) {
 
 	server := &http.Server{
 		Handler: theApp.Router,
-		Addr:    addr,
+		Addr:    ":" + addr,
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: 10 * time.Second,
 		ReadTimeout:  10 * time.Second,
 		IdleTimeout:  60 * time.Second,
-		TLSConfig: &tls.Config{
-			ServerName: "localhost",
-		},
+		// TLSConfig: &tls.Config{
+		// 	ServerName: "localhost",
+		// },
 	}
 	fmt.Println("Launched at localhost", server.Addr)
 	if err := server.ListenAndServe(); err != nil {
