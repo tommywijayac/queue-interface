@@ -1,1 +1,1 @@
-web: bin/kmn-queue-interface
+web: bin/queueinfo
