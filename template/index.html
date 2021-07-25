@@ -6,19 +6,19 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
         <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="../static/css/bootstrap.min.css">
-        <link rel="stylesheet" href="../static/css/bootstrap-select.min.css">        
+        <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/static/css/bootstrap-select.min.css">        
         <!-- Local CSS -->
-        <link rel="stylesheet" href="../static/css/style.css">
+        <link rel="stylesheet" href="/static/css/style.css">
 
         <!-- Optional JavaScript -->
         <!-- jQuery first, then Bootstrap Bundle JS (including Popper JS). Also add bootstrap-select -->
-        <script src="../static/js/jquery-3.6.0.min.js"></script>
-        <script src="../static/js/bootstrap.bundle.min.js"></script>
-        <script src="../static/js/bootstrap-select.min.js"></script>
+        <script src="/static/js/jquery-3.6.0.min.js"></script>
+        <script src="/static/js/bootstrap.bundle.min.js"></script>
+        <script src="/static/js/bootstrap-select.min.js"></script>
         
         <!-- Handle favicon -->
-        <link rel="icon" type="image/png" href="../static/assets/logo-sm.ico">
+        <link rel="icon" type="image/png" href="/static/assets/logo-sm.ico">
 
         <title>
             KMN Antrian
@@ -30,7 +30,7 @@
                 <div class="col-sm-8">
                     {{template "_header" .}}
 
-                    <form action="/" id="search-form" method="POST" autocomplete="off">
+                    <form action="/search" method="GET" autocomplete="off">
                         <div>
                             <p class="h5">Selamat datang di KMN EyeCare</p>
                             <p>Untuk mengetahui progress antrian Anda, silakan pilih lokasi KMN EyeCare Anda dan masukkan nomor antrian Anda. Terima kasih</p>
@@ -40,9 +40,9 @@
 
                         <label class="mb-3">pilih lokasi:</label>
                         <div style="text-align-last: center;">
-                            <select class="selectpicker w-100" style="text-align-last: center;" name="location">
-                                {{ range $index, $branch := .Branches }}
-                                    <option value="{{ $index }}" class="text-center">{{ $branch }}</option>
+                            <select class="selectpicker w-100" style="text-align-last: center;" name="branch">
+                                {{ range $branch := .Branches }}
+                                    <option value="{{ $branch.Code }}" class="text-center">{{ $branch.Name }}</option>
                                 {{ end }}
                             </select>
                         </div>
@@ -51,26 +51,31 @@
 
                         <label class="mb-3">pilih proses:</label>
                         <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                    {{ range $index, $process := .Processes }}
+                        {{ if eq $index 0 }}
                             <label class="btn btn-outline-primary w-100 active p-3">
-                                <input type="radio" class="btn-check" name="options" autocomplete="off" checked>Operasi
+                                <input type="radio" class="btn-check" name="process" value="{{ $process.Code }}" autocomplete="off" checked>{{ $process.Name }}
                             </label>
+                        {{ else }}
                             <label class="btn btn-outline-primary w-100 p-3">
-                                <input type="radio" class="btn-check" name="options" autocomplete="off">Poli / Rawat Jalan
+                                <input type="radio" class="btn-check" name="process" value="{{ $process.Code }}" autocomplete="off">{{ $process.Name }}
                             </label>
+                        {{ end }}
+                    {{ end }}
                         </div>
 
                         <div class="m-1">&nbsp;</div>
 
                         <label class="mb-3">masukkan nomor antrian:</label>
-                        <div id="qnum-container">
-                            <div id="qnum" class="d-flex flex-row justify-content-center mb-3">
-                                <input class="qinput mx-2 rounded" id="qinput1" name="qinput1" type="[a-zA-Z]{1}" maxlength="1" required/>
-                                <input class="qinput mx-2 rounded" id="qinput2" name="qinput2" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
-                                <input class="qinput mx-2 rounded" id="qinput3" name="qinput3" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
-                                <input class="qinput mx-2 rounded" id="qinput4" name="qinput4" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
+                        <div class="container">
+                            <div id="qnum" class="row">
+                                <input class="col mx-1 p-0 qinput rounded" id="qinput1" name="qinput1" type="[a-zA-Z]{1}" maxlength="1" required/>
+                                <input class="col mx-1 p-0 qinput rounded" id="qinput2" name="qinput2" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
+                                <input class="col mx-1 p-0 qinput rounded" id="qinput3" name="qinput3" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
+                                <input class="col mx-1 p-0 qinput rounded" id="qinput4" name="qinput4" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
                             </div>
-                            <div class="h-5" style="color:red; opacity: 0; display:none;" id="warning">warning</div>
                         </div>
+                        <div class="h-5" style="color:red; opacity: 0; display:none;" id="warning">warning</div>
 
                         <div class="m-1">&nbsp;</div>
                         
@@ -85,7 +90,7 @@
                 $('.selectpicker').selectpicker();
             });
         </script>
-        <script src="../static/js/rtc.js"></script>
-        <script src="../static/js/search.js"></script>        
+        <script src="/static/js/rtc.js"></script>
+        <script src="/static/js/search.js"></script>        
     </body>
 </html>
