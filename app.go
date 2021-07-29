@@ -55,9 +55,7 @@ func validateProcess(processCode string) bool {
 const MAX_ROOM int = 10
 
 type App struct {
-	Router     *mux.Router
-	serverCert string
-	serverKey  string
+	Router *mux.Router
 
 	TemplateHome    *template.Template
 	TemplateSearch  *template.Template
@@ -268,9 +266,6 @@ func (theApp *App) Initialize() {
 }
 
 func (theApp *App) Run(addr string) {
-	theApp.serverCert = "env/localhost.crt"
-	theApp.serverKey = "env/localhost.key"
-
 	server := &http.Server{
 		Handler: theApp.Router,
 		Addr:    ":" + addr,
@@ -278,18 +273,11 @@ func (theApp *App) Run(addr string) {
 		WriteTimeout: 10 * time.Second,
 		ReadTimeout:  10 * time.Second,
 		IdleTimeout:  60 * time.Second,
-		// TLSConfig: &tls.Config{
-		// 	ServerName: "localhost",
-		// },
 	}
 	fmt.Println("Launched at localhost", server.Addr)
 	if err := server.ListenAndServe(); err != nil {
 		panic(err.Error())
 	}
-
-	// if err := server.ListenAndServeTLS(theApp.serverCert, theApp.serverKey); err != nil {
-	// 	panic(err.Error())
-	// }
 }
 
 func SanitizeID(id string) (string, error) {
