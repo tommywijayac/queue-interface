@@ -14,6 +14,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ProcessData struct {
@@ -57,11 +58,13 @@ const MAX_ROOM int = 10
 type App struct {
 	Router *mux.Router
 
-	TemplateHome    *template.Template
-	TemplateSearch  *template.Template
-	TemplateDisplay *template.Template
-	TemplateError   *template.Template
-	TemplateNoData  *template.Template
+	TemplateHome             *template.Template
+	TemplateSearch           *template.Template
+	TemplateDisplay          *template.Template
+	TemplateError            *template.Template
+	TemplateNoData           *template.Template
+	TemplateLogin            *template.Template
+	TemplateEditNotification *template.Template
 
 	DB       []*sql.DB
 	Branches []BranchData
@@ -122,6 +125,7 @@ func (theApp *App) GetBranchInfo(branchCode string) (string, int) {
 	return branch, i
 }
 
+// Prevent directory traversal by serving index.html in our static web server
 type neuteredFileSystem struct {
 	fs http.FileSystem
 }
@@ -198,7 +202,7 @@ func (theApp *App) readRoomConfig(process string) {
 	key = "process." + process + ".room"
 	err := viper.UnmarshalKey(key, &rooms)
 	if err != nil {
-		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s \n", err.Error()))
+		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
 	}
 	// Limit the number of visible room regardless of config file
 	// (hard-coded limitation for Released application)
@@ -253,6 +257,9 @@ func (theApp *App) Initialize() {
 	theApp.Router = mux.NewRouter()
 	theApp.Router.HandleFunc("/", theApp.HomeHandler).Methods("GET")
 	theApp.Router.HandleFunc("/search", theApp.DisplayQueueHandler).Methods("GET")
+	theApp.Router.HandleFunc("/kmn-internal", theApp.InternalLoginHandler).Methods("GET", "POST")
+	theApp.Router.HandleFunc("/kmn-internal/notification", theApp.InternalNotificationSettingHandler).Methods("GET", "POST")
+
 	theApp.Router.NotFoundHandler = http.HandlerFunc(theApp.NotFoundHandler)
 
 	fileserver := http.FileServer(neuteredFileSystem{http.Dir("static")})
@@ -263,6 +270,9 @@ func (theApp *App) Initialize() {
 	theApp.TemplateDisplay = template.Must(template.New("queue.html").Funcs(fns).ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
 	theApp.TemplateNoData = template.Must(template.ParseFiles("template/nodata.html", "template/_header.html"))
 	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html"))
+
+	theApp.TemplateLogin = template.Must(template.ParseFiles("template/login.html"))
+	theApp.TemplateEditNotification = template.Must(template.ParseFiles("template/editnotification.html"))
 }
 
 func (theApp *App) Run(addr string) {
@@ -405,7 +415,6 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	if err := theApp.TemplateDisplay.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	return
 }
 
 func (theApp *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
@@ -483,4 +492,73 @@ func (theApp *App) ConstructRoomListBasedOnOrder(logs []PatientLog, processCode 
 	}
 
 	return roomDisplays
+}
+
+//========================================================================//
+// ** Internal Pages Implementation **//
+type Credential struct {
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+}
+
+var (
+	creds = []Credential{}
+)
+
+func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if r.Method == "GET" {
+		// Serve login page
+		if err := theApp.TemplateLogin.Execute(w, nil); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	} else if r.Method == "POST" {
+		// Evaluate login input
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+
+		auth := false
+		for _, cred := range creds {
+			if cred.Username == username {
+				err := bcrypt.CompareHashAndPassword([]byte(cred.Password), []byte(password))
+				if err != nil { // user found but password doesn't match
+					http.Error(w, "User and password combination doesn't match any records", http.StatusUnauthorized)
+					return
+				}
+
+				auth = true
+				break
+			}
+		}
+		if !auth { // user not found
+			http.Error(w, "User and password combination doesnt match any records", http.StatusForbidden)
+			return
+		}
+
+		// Redirect to notification page
+		url := r.URL.Path + "/notification"
+		http.Redirect(w, r, url, http.StatusSeeOther)
+	}
+}
+
+func (theApp *App) InternalNotificationSettingHandler(w http.ResponseWriter, r *http.Request) {
+	if err := theApp.TemplateEditNotification.Execute(w, nil); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (theApp *App) ReadRegisterdUserConfig() {
+	viper.SetConfigFile("./users.json")
+	err := viper.ReadInConfig()
+	if err != nil {
+		fmt.Println("ER_INTERNAL_01: Error opening Registered User Config")
+		fmt.Println(err.Error())
+		return
+	}
+
+	viper.UnmarshalKey("registeredUsers", &creds)
 }

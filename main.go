@@ -8,6 +8,7 @@ import (
 func main() {
 	theApp := App{}
 	theApp.ReadConfig()
+	theApp.ReadRegisterdUserConfig()
 	theApp.Initialize()
 
 	port := os.Getenv("PORT")
@@ -15,7 +16,5 @@ func main() {
 		fmt.Println("Port set to default")
 		port = "8080"
 	}
-
 	theApp.Run(port)
-	return
 }
