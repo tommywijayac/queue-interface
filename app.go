@@ -323,23 +323,17 @@ func validateID(id string) bool {
 	return validQueueExp.MatchString(id)
 }
 
-func (theApp *App) GetBranchNotification(branchCode string) string {
-	// var footer string
+func (theApp *App) GetNotification(branchCode string, roomCode string) (string, string) {
+	theApp.notificationViper.ReadInConfig()
+	var key string
 
-	// // Read footer from runningtext.json
-	// viper.SetConfigFile("./runningtext.json")
-	// err := viper.ReadInConfig()
-	// if err != nil {
-	// 	// by keeping footer as empty text, it won't be displayed
-	// 	footer = ""
-	// } else {
-	// 	footer = viper.GetString(branchCode)
-	// }
+	key = fmt.Sprintf("%s.branch", branchCode)
+	branch := theApp.notificationViper.GetString(key)
 
-	key := fmt.Sprintf("%s.branch", branchCode)
-	notification := theApp.notificationViper.GetString(key)
+	key = fmt.Sprintf("%s.%s", branchCode, roomCode)
+	room := theApp.notificationViper.GetString(key)
 
-	return notification
+	return branch, room
 }
 
 func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
@@ -417,13 +411,18 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(roomDisplay) == 0 {
 		theApp.NoDataTemplateDisplay(w, r, fullId)
+		return
 	}
 
+	// Get notification
+	branchNotification, roomNotification := theApp.GetNotification(branch, r.FormValue("qinput1"))
+
 	payload := map[string]interface{}{
-		"Branch": branchString,
-		"Id":     fullId,
-		"Rooms":  roomDisplay,
-		"Footer": theApp.GetBranchNotification(branch),
+		"Branch":             branchString,
+		"Id":                 fullId,
+		"Rooms":              roomDisplay,
+		"BranchNotification": branchNotification,
+		"RoomNotification":   roomNotification,
 	}
 
 	// Render output
