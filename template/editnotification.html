@@ -24,18 +24,33 @@
         </title>
     </head>
     <body class="p-5">
-        <h1>Cabang</h1>
-        <form>
+        <h1>{{ .Branch }}</h1>
+        <form action="/kmn-internal/notification" method="POST">
             <div class="form-group">
-                <label for="globalMessage">Pesan Cabang</label>
-                <textarea type="text" class="form-control" id="globalMessage" placeholder="Tulis pesan untuk cabang keseluruhan" rows="3"></textarea>
+                <label>Pesan Cabang</label>
+                <textarea type="text" class="form-control" name="branch" placeholder="Tulis pesan untuk cabang keseluruhan" rows="3">{{ .BranchNotification }}</textarea>
             </div>
             <hr>
-            <div class="form-group">
-                <label for="ruang">Ruang X</label>
-                <input type="text" class="form-control" id="ruang"></input>
+            <div>
+                <h3>OPR flow</h3>
+            {{ range $room := .OprRooms }}
+                <div class="form-group">
+                    <label>{{ $room.Name }} ({{ $room.Code }})</label>
+                    <input type="text" class="form-control" name="{{ $room.Code }}" value="{{ $room.Notification }}"></input>
+                </div>
+            {{ end }}
+            </div>
+            <div>
+                <h3>POL flow</h3>
+            {{ range $room := .PolRooms }}
+                <div class="form-group">
+                    <label>{{ $room.Name }} ({{ $room.Code }})</label>
+                    <input type="text" class="form-control" name="{{ $room.Code }}" value="{{ $room.Notification }}"></input>
+                </div>
+            {{ end }}
             </div>
             <button type="submit" class="btn btn-primary">Simpan</button>
+            <a href="{{ .LogoutURL }}" class="link-primary ml-3">Logout</a>
         </form>
     </body>
 </html>

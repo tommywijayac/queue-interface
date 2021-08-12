@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -13,6 +14,8 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -71,6 +74,9 @@ type App struct {
 
 	RoomMap     map[string]map[string]RoomData //process code -> room code -> room data
 	OrderedRoom map[string]map[int]string      //process code -> room order -> room code
+
+	notificationViper  *viper.Viper
+	notificationPolicy *bluemonday.Policy
 }
 
 type RoomData struct {
@@ -142,7 +148,7 @@ func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
 		return nil, err
 	}
 
-	s, err := f.Stat()
+	s, _ := f.Stat()
 	if s.IsDir() {
 		if _, err := nfs.fs.Open("/index.html"); err != nil {
 			closeErr := f.Close()
@@ -164,17 +170,13 @@ func (theApp *App) ReadConfig() bool {
 	viper.SetConfigFile("./config.json")
 	err = viper.ReadInConfig()
 	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			panic(fmt.Errorf("ER001: Fatal error - config not found"))
-		} else {
-			panic(fmt.Errorf("ER002: Fatal error - config file: %s \n", err.Error()))
-		}
+		panic(fmt.Errorf("ER002: Fatal error - config file: %s", err.Error()))
 	}
 
 	// Read branch configuration
 	err = viper.UnmarshalKey("branch", &theApp.Branches)
 	if err != nil {
-		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s \n", err.Error()))
+		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
 	}
 	if len(theApp.Branches) == 0 {
 		panic(fmt.Errorf("ER005: Fatal error - no Branch endpoint defined"))
@@ -191,6 +193,9 @@ func (theApp *App) ReadConfig() bool {
 
 	theApp.readRoomConfig("opr")
 	theApp.readRoomConfig("pol")
+
+	// Read registered users
+	viper.UnmarshalKey("registeredUsers", &creds)
 
 	return true
 }
@@ -258,7 +263,9 @@ func (theApp *App) Initialize() {
 	theApp.Router.HandleFunc("/", theApp.HomeHandler).Methods("GET")
 	theApp.Router.HandleFunc("/search", theApp.DisplayQueueHandler).Methods("GET")
 	theApp.Router.HandleFunc("/kmn-internal", theApp.InternalLoginHandler).Methods("GET", "POST")
-	theApp.Router.HandleFunc("/kmn-internal/notification", theApp.InternalNotificationSettingHandler).Methods("GET", "POST")
+	theApp.Router.HandleFunc("/kmn-internal/notification", theApp.InternalNotificationSettingGetHandler).Methods("GET")
+	theApp.Router.HandleFunc("/kmn-internal/notification", theApp.InternalNotificationSettingPostHandler).Methods("POST")
+	theApp.Router.HandleFunc("/kmn-internal/notification/logout", theApp.InternalLogoutHandler).Methods("GET")
 
 	theApp.Router.NotFoundHandler = http.HandlerFunc(theApp.NotFoundHandler)
 
@@ -273,6 +280,11 @@ func (theApp *App) Initialize() {
 
 	theApp.TemplateLogin = template.Must(template.ParseFiles("template/login.html"))
 	theApp.TemplateEditNotification = template.Must(template.ParseFiles("template/editnotification.html"))
+
+	// Initialize notification database
+	theApp.notificationViper = viper.New()
+	theApp.notificationViper.SetConfigFile(notificationConfig)
+	theApp.notificationPolicy = bluemonday.UGCPolicy()
 }
 
 func (theApp *App) Run(addr string) {
@@ -311,20 +323,23 @@ func validateID(id string) bool {
 	return validQueueExp.MatchString(id)
 }
 
-func GetFooterText(branchCode string) string {
-	var footer string
+func (theApp *App) GetBranchNotification(branchCode string) string {
+	// var footer string
 
-	// Read footer from runningtext.json
-	viper.SetConfigFile("./runningtext.json")
-	err := viper.ReadInConfig()
-	if err != nil {
-		// by keeping footer as empty text, it won't be displayed
-		footer = ""
-	} else {
-		footer = viper.GetString(branchCode)
-	}
+	// // Read footer from runningtext.json
+	// viper.SetConfigFile("./runningtext.json")
+	// err := viper.ReadInConfig()
+	// if err != nil {
+	// 	// by keeping footer as empty text, it won't be displayed
+	// 	footer = ""
+	// } else {
+	// 	footer = viper.GetString(branchCode)
+	// }
 
-	return footer
+	key := fmt.Sprintf("%s.branch", branchCode)
+	notification := theApp.notificationViper.GetString(key)
+
+	return notification
 }
 
 func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
@@ -408,7 +423,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		"Branch": branchString,
 		"Id":     fullId,
 		"Rooms":  roomDisplay,
-		"Footer": GetFooterText(branch),
+		"Footer": theApp.GetBranchNotification(branch),
 	}
 
 	// Render output
@@ -472,8 +487,7 @@ func (theApp *App) ConstructRoomListBasedOnOrder(logs []PatientLog, processCode 
 
 	n := len(theApp.RoomMap[processCode])
 	for i := 0; i < n; i++ {
-		// order is 1-based
-		if code, exist := theApp.OrderedRoom[processCode][i+1]; exist {
+		if code, exist := theApp.OrderedRoom[processCode][i]; exist {
 			var rd = RoomDisplay{
 				Name:     theApp.RoomMap[processCode][code].Name,
 				Time:     "",
@@ -501,8 +515,17 @@ type Credential struct {
 	Password string `mapstructure:"password"`
 }
 
+type RoomNotification struct {
+	Code         string
+	Name         string
+	Notification string
+}
+
 var (
-	creds = []Credential{}
+	creds             = []Credential{}
+	loggedUserSession = sessions.NewCookieStore([]byte("super-secret-key")) // [TODO] change
+
+	notificationConfig = "./notification.json"
 )
 
 func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -539,26 +562,183 @@ func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
+		// Success
+		// Store session
+		session, _ := loggedUserSession.New(r, "authenticated-user-session")
+		session.Options = &sessions.Options{
+			MaxAge: 60 * 30, // 30 minute
+		}
+		session.Values["username"] = username
+		session.Values["authenticated"] = true
+		err := session.Save(r, w)
+		if err != nil {
+			fmt.Println(err)
+		}
+
 		// Redirect to notification page
 		url := r.URL.Path + "/notification"
-		http.Redirect(w, r, url, http.StatusSeeOther)
+		http.Redirect(w, r, url, http.StatusFound)
 	}
 }
 
-func (theApp *App) InternalNotificationSettingHandler(w http.ResponseWriter, r *http.Request) {
-	if err := theApp.TemplateEditNotification.Execute(w, nil); err != nil {
+func (theApp *App) InternalLogoutHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
+	session.Values["authenticated"] = false
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/kmn-internal", http.StatusFound)
+}
+
+func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Request) {
+	// Reject unauthenticated access
+	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
+	if auth, ok := session.Values["authenticated"]; !ok || !auth.(bool) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Personalize page according to cookies data (username), and also notification config for latest value
+	// 1. Translate username, which is branch code, into branch name
+	branchCode := fmt.Sprintf("%v", session.Values["username"])
+	branchName := ""
+	for _, branchData := range theApp.Branches {
+		if branchData.Code == branchCode {
+			branchName = branchData.Name
+		}
+	}
+	// 2. Get rooms in config.json and prepare controls for each one
+	oprRoomCount := len(theApp.RoomMap["opr"])
+	polRoomCount := len(theApp.RoomMap["pol"])
+
+	oprRooms := make([]RoomNotification, 0)
+	for i := 0; i < oprRoomCount; i++ {
+		if code, exist := theApp.OrderedRoom["opr"][i]; exist {
+			roomData := theApp.RoomMap["opr"][code]
+
+			oprRooms = append(oprRooms, RoomNotification{
+				Name:         roomData.Name,
+				Code:         roomData.Code,
+				Notification: "",
+			})
+		}
+	}
+	polRooms := make([]RoomNotification, 0)
+	for i := 0; i < polRoomCount; i++ {
+		if code, exist := theApp.OrderedRoom["pol"][i]; exist {
+			roomData := theApp.RoomMap["pol"][code]
+
+			polRooms = append(polRooms, RoomNotification{
+				Name:         roomData.Name,
+				Code:         roomData.Code,
+				Notification: "",
+			})
+		}
+	}
+
+	// 3. Read existing notification text from config file
+	theApp.notificationViper.ReadInConfig()
+	notification := make(map[string]string)
+	theApp.notificationViper.UnmarshalKey(branchCode, &notification)
+	// Branch
+	branchNotification := ""
+	if text, exist := notification["branch"]; exist {
+		branchNotification = text
+	}
+	// Opr Rooms
+	for i := 0; i < oprRoomCount; i++ {
+		// Because branch code entry are capital, but json key is always lowercase
+		code := strings.ToLower(oprRooms[i].Code)
+
+		if text, exist := notification[code]; exist {
+			oprRooms[i].Notification = text
+		}
+	}
+	// Pol Rooms
+	for i := 0; i < polRoomCount; i++ {
+		// Because branch code entry are capital, but json key is always lowercase
+		code := strings.ToLower(polRooms[i].Code)
+
+		if text, exist := notification[code]; exist {
+			polRooms[i].Notification = text
+		}
+	}
+
+	// 4. Construct href link based on current path
+	logoutURL := "http://" + r.Host + r.URL.Path + "/logout"
+
+	payload := map[string]interface{}{
+		"Branch":             branchName,
+		"BranchNotification": branchNotification,
+		"LogoutURL":          logoutURL,
+		"OprRooms":           oprRooms,
+		"PolRooms":           polRooms,
+	}
+
+	if err := theApp.TemplateEditNotification.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func (theApp *App) ReadRegisterdUserConfig() {
-	viper.SetConfigFile("./users.json")
-	err := viper.ReadInConfig()
-	if err != nil {
-		fmt.Println("ER_INTERNAL_01: Error opening Registered User Config")
-		fmt.Println(err.Error())
+func (theApp *App) SanitizeNotificationInput(text string) string {
+	// Strip malicious html markup
+	cleanHTML := theApp.notificationPolicy.Sanitize(text)
+	// Escape all html markup
+	noMarkUpHTML := html.EscapeString(cleanHTML)
+
+	return noMarkUpHTML
+}
+
+func (theApp *App) InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Request) {
+	// Reject unauthenticated access
+	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
+	if auth, ok := session.Values["authenticated"]; !ok || !auth.(bool) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	branchCode := fmt.Sprintf("%v", session.Values["username"])
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	viper.UnmarshalKey("registeredUsers", &creds)
+	var key string // used for storing input value into config
+
+	branchNotificationRaw := r.FormValue("branch")
+	key = fmt.Sprintf("%s.branch", branchCode)
+	// Sanitize input
+	branchNotification := theApp.notificationPolicy.Sanitize(branchNotificationRaw)
+	theApp.notificationViper.Set(key, branchNotification)
+
+	// Because we create control based on RoomMap, then we can assume the control exist with our defined ID (room code)
+	oprRoomCount := len(theApp.RoomMap["opr"])
+	polRoomCount := len(theApp.RoomMap["pol"])
+
+	// Get and sanitize all input
+	for i := 0; i < oprRoomCount; i++ {
+		if code, exist := theApp.OrderedRoom["opr"][i]; exist {
+			roomData := theApp.RoomMap["opr"][code]
+
+			// Sanitize input
+			notification := theApp.SanitizeNotificationInput(r.FormValue(roomData.Code))
+
+			// Set config value in memory with Viper
+			key = fmt.Sprintf("%s.%s", branchCode, roomData.Code)
+			theApp.notificationViper.Set(key, notification)
+		}
+	}
+	for i := 0; i < polRoomCount; i++ {
+		if code, exist := theApp.OrderedRoom["pol"][i]; exist {
+			roomData := theApp.RoomMap["pol"][code]
+
+			// Sanitize input
+			notification := theApp.SanitizeNotificationInput(r.FormValue(roomData.Code))
+
+			// Set config value in memory with Viper
+			key = fmt.Sprintf("%s.%s", branchCode, roomData.Code)
+			theApp.notificationViper.Set(key, notification)
+		}
+	}
+
+	theApp.notificationViper.WriteConfig()
 }

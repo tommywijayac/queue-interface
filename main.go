@@ -5,10 +5,13 @@ import (
 	"os"
 )
 
+func init() {
+	fmt.Println("Hello from main init!")
+}
+
 func main() {
 	theApp := App{}
 	theApp.ReadConfig()
-	theApp.ReadRegisterdUserConfig()
 	theApp.Initialize()
 
 	port := os.Getenv("PORT")
