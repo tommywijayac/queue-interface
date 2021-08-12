@@ -46,17 +46,17 @@
                     "name": "R. Persiapan Tindakan",
                     "code": "X",
                     "group-code": "GX",
-                    "order": 1
+                    "order": 0
                 }, {
                     "name": "R. Tindakan",
                     "code": "Y",
                     "group-code": "GY",
-                    "order": 2
+                    "order": 1
                 }, {
                     "name": "R. Pemulihan",
                     "code": "Z",
                     "group-code": "GZ",
-                    "order": 3
+                    "order": 2
                 }
             ]
         } ,
@@ -106,5 +106,28 @@
                 }        
             ]
         }
-    }
+    },
+
+    "registeredUsers" : [
+		{
+			"username": "kbj",
+			"password": "$2a$08$2/uzWHUAMMdHURhUuIKuc.LLeSHYJgzc0NxgxFhFXgvJC0fo6xqTK"
+		},
+		{
+			"username": "jsl",
+			"password": "$2a$08$tBUtIasxLx7mh7H//ttp7.F6FLFjlFaoz5Sn82iXQTPFug5/RcvfW"
+		},
+		{
+			"username": "kmy",
+			"password": "$2a$08$ga.t/hUQ9q/C0hsO71gAN.lTJm5kUpqfF7KXeHLWRNm/1jIFIZ81m"
+		},
+		{
+			"username": "pik",
+			"password": "$2a$08$E83snEjRfxBeA7F.d8kPMe1BM8FBxFPhBJzsITWvOmLfcUOXyD7ZO"
+		},
+		{
+			"username": "smg",
+			"password": "$2a$08$RNv9LKqSBRf5ki8NbKHJbuaDMYJzdBJsmFCn16t/n4xY6ZWtMhtLG"
+		}
+	]
 }
