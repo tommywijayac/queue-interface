@@ -204,14 +204,14 @@ func (theApp *App) readRoomConfig(process string) {
 	var rooms []RoomData
 	var key string
 
-	key = "process." + process + ".room"
+	key = fmt.Sprintf("process.%s.room", process)
 	err := viper.UnmarshalKey(key, &rooms)
 	if err != nil {
 		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
 	}
 	// Limit the number of visible room regardless of config file
 	// (hard-coded limitation for Released application)
-	key = "process." + process + ".visible-room"
+	key = fmt.Sprintf("process.%s.visible-room", process)
 	roomCount := viper.GetInt(key)
 	if roomCount < 0 {
 		roomCount = 0
@@ -569,6 +569,7 @@ func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		session.Values["username"] = username
 		session.Values["authenticated"] = true
+		session.Values["changes-saved"] = false
 		err := session.Save(r, w)
 		if err != nil {
 			fmt.Println(err)
@@ -576,16 +577,17 @@ func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) 
 
 		// Redirect to notification page
 		url := r.URL.Path + "/notification"
-		http.Redirect(w, r, url, http.StatusFound)
+		http.Redirect(w, r, url, http.StatusSeeOther)
 	}
 }
 
 func (theApp *App) InternalLogoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
 	session.Values["authenticated"] = false
+	session.Values["changes-saved"] = false
 	session.Save(r, w)
 
-	http.Redirect(w, r, "/kmn-internal", http.StatusFound)
+	http.Redirect(w, r, "/kmn-internal", http.StatusSeeOther)
 }
 
 func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -671,7 +673,12 @@ func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, 
 		"LogoutURL":          logoutURL,
 		"OprRooms":           oprRooms,
 		"PolRooms":           polRooms,
+		"ChangesSaved":       session.Values["changes-saved"],
 	}
+
+	// Reset changes-saved flag in cookie
+	session.Values["changes-saved"] = false
+	session.Save(r, w)
 
 	if err := theApp.TemplateEditNotification.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -739,5 +746,11 @@ func (theApp *App) InternalNotificationSettingPostHandler(w http.ResponseWriter,
 		}
 	}
 
+	// Overwrite config file
 	theApp.notificationViper.WriteConfig()
+
+	// Redirect back to notification page
+	session.Values["changes-saved"] = true
+	session.Save(r, w)
+	http.Redirect(w, r, "/kmn-internal/notification", http.StatusSeeOther)
 }
