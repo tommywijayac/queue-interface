@@ -58,8 +58,12 @@
 
                 <div class="m-2">&nbsp;</div>
 
-                {{ if .Footer }}
-                    {{ template "_footer" . }}
+                {{ if .BranchNotification }}
+                    {{ template "_footer" .BranchNotification }}
+                {{ end }}
+
+                {{ if .RoomNotification }}
+                    {{ template "_footer" .RoomNotification }}
                 {{ end }}
             </div>
         </div>

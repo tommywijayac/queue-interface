@@ -24,6 +24,12 @@
         </title>
     </head>
     <body class="p-5">
+    {{ if .ChangesSaved }}
+        <div class="alert alert-success">
+            Text berhasil disimpan!
+        </div>
+    {{ end }}
+
         <h1>{{ .Branch }}</h1>
         <form action="/kmn-internal/notification" method="POST">
             <div class="form-group">
