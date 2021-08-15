@@ -31,7 +31,7 @@
     {{ end }}
 
         <h1>{{ .Branch }}</h1>
-        <form action="/kmn-internal/notification" method="POST">
+        <form method="POST">
             <div class="form-group">
                 <label>Pesan Cabang</label>
                 <textarea type="text" class="form-control" name="branch" placeholder="Tulis pesan untuk cabang keseluruhan" rows="3">{{ .BranchNotification }}</textarea>
@@ -56,7 +56,7 @@
             {{ end }}
             </div>
             <button type="submit" class="btn btn-primary">Simpan</button>
-            <button type="submit" class="btn btn-link ml-3" formaction="/kmn-internal/logout">Logout</button>
+            <button type="submit" class="btn btn-link ml-3" formaction="logout">Logout</button>
         </form>
     </body>
 </html>
