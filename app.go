@@ -528,17 +528,17 @@ var (
 )
 
 func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	if r.Method == "GET" {
 		// Serve login page
 		if err := theApp.TemplateLogin.Execute(w, nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	} else if r.Method == "POST" {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		// Evaluate login input
 		username := r.FormValue("username")
 		password := r.FormValue("password")
