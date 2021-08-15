@@ -265,7 +265,7 @@ func (theApp *App) Initialize() {
 	theApp.Router.HandleFunc("/kmn-internal", theApp.InternalLoginHandler).Methods("GET", "POST")
 	theApp.Router.HandleFunc("/kmn-internal/notification", theApp.InternalNotificationSettingGetHandler).Methods("GET")
 	theApp.Router.HandleFunc("/kmn-internal/notification", theApp.InternalNotificationSettingPostHandler).Methods("POST")
-	theApp.Router.HandleFunc("/kmn-internal/notification/logout", theApp.InternalLogoutHandler).Methods("GET")
+	theApp.Router.HandleFunc("/kmn-internal/logout", theApp.InternalLogoutHandler).Methods("POST")
 
 	theApp.Router.NotFoundHandler = http.HandlerFunc(theApp.NotFoundHandler)
 
@@ -664,13 +664,9 @@ func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, 
 		}
 	}
 
-	// 4. Construct href link based on current path
-	logoutURL := "http://" + r.Host + r.URL.Path + "/logout"
-
 	payload := map[string]interface{}{
 		"Branch":             branchName,
 		"BranchNotification": branchNotification,
-		"LogoutURL":          logoutURL,
 		"OprRooms":           oprRooms,
 		"PolRooms":           polRooms,
 		"ChangesSaved":       session.Values["changes-saved"],
