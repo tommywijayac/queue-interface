@@ -409,6 +409,8 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		roomDisplay = theApp.ConstructRoomListBasedOnTime(logs, process)
 	}
 
+	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
+	// Trying to modify the active with below method would crash
 	if len(roomDisplay) == 0 {
 		theApp.NoDataTemplateDisplay(w, r, fullId)
 		return
@@ -469,8 +471,12 @@ func (theApp *App) ConstructRoomListBasedOnTime(logs []PatientLog, processCode s
 		}
 	}
 
-	// Set last room as active room
-	roomDisplays[len(roomDisplays)-1].IsActive = true
+	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
+	// Trying to modify the active with below method would crash
+	if len(roomDisplays) > 0 {
+		// Set last room as active room
+		roomDisplays[len(roomDisplays)-1].IsActive = true
+	}
 
 	return roomDisplays
 }
