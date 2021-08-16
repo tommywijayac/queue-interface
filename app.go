@@ -25,26 +25,22 @@ type ProcessData struct {
 	Code string
 }
 
-// always return constant slice of ProcessData
-// here, we do hard-code limitation on allowable process
 // if new process were to be added, must modify below function and also config file
-func getProcess() []ProcessData {
-	var processes []ProcessData
-	processes = append(processes, ProcessData{
-		Code: "opr",
-		Name: "Operasi",
-	})
-	processes = append(processes, ProcessData{
-		Code: "pol",
-		Name: "Poli / Rawat Jalan",
-	})
-	return processes
-}
-
 var (
-	ProcessLib = map[string]string{
+	ProcessLibMap = map[string]string{
 		"opr": "Operasi",
 		"pol": "Poli / Rawat Jalan",
+	}
+
+	// For populating HTML controls, we want it to be consistent, so array is used
+	ProcessLibArr = []ProcessData{
+		{
+			Code: "opr",
+			Name: "Operasi",
+		}, {
+			Code: "pol",
+			Name: "Poli / Rawat Jalan",
+		},
 	}
 )
 
@@ -54,13 +50,8 @@ func validateProcess(processCode string) bool {
 		return false
 	}
 
-	processesRef := getProcess()
-	for _, processRef := range processesRef {
-		if processCode == processRef.Code {
-			return true
-		}
-	}
-	return false
+	_, exist := ProcessLibMap[processCode]
+	return exist
 }
 
 const MAX_ROOM int = 10
@@ -352,7 +343,7 @@ func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	payload := map[string]interface{}{
 		"Branches":  branchCopy,
-		"Processes": getProcess(),
+		"Processes": ProcessLibArr,
 	}
 	if err := theApp.TemplateHome.Execute(w, payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -451,7 +442,7 @@ func (theApp *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 func (theApp *App) NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id, process string) {
 	w.WriteHeader(http.StatusOK) // for clarity
 
-	processName, _ := ProcessLib[process]
+	processName, _ := ProcessLibMap[process]
 
 	message := fmt.Sprintf("Data pasien %s untuk %s tidak tersedia", id, processName)
 
