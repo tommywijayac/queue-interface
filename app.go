@@ -537,9 +537,33 @@ var (
 
 func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		// Serve login page
-		if err := theApp.TemplateLogin.Execute(w, nil); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// With .Get() method, if not found, it created a new session immediately. So it's never nil
+		session, _ := loggedUserSession.Get(r, "authenticated-user-session")
+
+		// validate cookie session! [TODO] check hash.. need to store the hash then
+
+		if session.IsNew {
+			// Either no session or session exist but can't be decoded. gorilla.sessions create a new one
+			err := session.Save(r, w) // save the session
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				// Serve login page
+				if err := theApp.TemplateLogin.Execute(w, nil); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
+		} else {
+			if theApp.CheckRequestSession(session) {
+				// Redirect to notification page immediately
+				url := r.URL.Path + "/notification"
+				http.Redirect(w, r, url, http.StatusSeeOther)
+			} else {
+				// Serve login page
+				if err := theApp.TemplateLogin.Execute(w, nil); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
 		}
 	} else if r.Method == "POST" {
 		if err := r.ParseForm(); err != nil {
@@ -591,18 +615,26 @@ func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) 
 
 func (theApp *App) InternalLogoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
-	session.Values["authenticated"] = false
-	session.Values["changes-saved"] = false
 	session.Options.MaxAge = -1
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/kmn-internal", http.StatusSeeOther)
 }
 
+// Check if session is authenticated
+func (theApp *App) CheckRequestSession(session *sessions.Session) bool {
+	auth, ok := session.Values["authenticated"]
+	if !session.IsNew && ok && auth.(bool) {
+		return true
+	} else {
+		return false
+	}
+}
+
 func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Request) {
 	// Reject unauthenticated access
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
-	if auth, ok := session.Values["authenticated"]; !ok || !auth.(bool) {
+	if !theApp.CheckRequestSession(session) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -702,7 +734,7 @@ func (theApp *App) SanitizeNotificationInput(text string) string {
 func (theApp *App) InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Request) {
 	// Reject unauthenticated access
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
-	if auth, ok := session.Values["authenticated"]; !ok || !auth.(bool) {
+	if !theApp.CheckRequestSession(session) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
