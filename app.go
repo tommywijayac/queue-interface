@@ -41,6 +41,13 @@ func getProcess() []ProcessData {
 	return processes
 }
 
+var (
+	ProcessLib = map[string]string{
+		"opr": "Operasi",
+		"pol": "Poli / Rawat Jalan",
+	}
+)
+
 func validateProcess(processCode string) bool {
 	exp := regexp.MustCompile(`^[a-z]{3}$`)
 	if valid := exp.MatchString(processCode); !valid {
@@ -65,7 +72,6 @@ type App struct {
 	TemplateSearch           *template.Template
 	TemplateDisplay          *template.Template
 	TemplateError            *template.Template
-	TemplateNoData           *template.Template
 	TemplateLogin            *template.Template
 	TemplateEditNotification *template.Template
 
@@ -275,8 +281,7 @@ func (theApp *App) Initialize() {
 	// Template caching: parse templates here instead in request to avoid delay
 	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
 	theApp.TemplateDisplay = template.Must(template.New("queue.html").Funcs(fns).ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
-	theApp.TemplateNoData = template.Must(template.ParseFiles("template/nodata.html", "template/_header.html"))
-	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html"))
+	theApp.TemplateError = template.Must(template.ParseFiles("template/error.html", "template/_header.html"))
 
 	theApp.TemplateLogin = template.Must(template.ParseFiles("template/login.html"))
 	theApp.TemplateEditNotification = template.Must(template.ParseFiles("template/editnotification.html"))
@@ -393,7 +398,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			theApp.NoDataTemplateDisplay(w, r, fullId)
+			theApp.NoDataTemplateDisplay(w, r, fullId, process)
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -412,7 +417,7 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
 	// Trying to modify the active with below method would crash
 	if len(roomDisplay) == 0 {
-		theApp.NoDataTemplateDisplay(w, r, fullId)
+		theApp.NoDataTemplateDisplay(w, r, fullId, process)
 		return
 	}
 
@@ -436,17 +441,21 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 func (theApp *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 
-	if tmplErr := theApp.TemplateError.Execute(w, nil); tmplErr != nil {
-		http.Error(w, tmplErr.Error(), http.StatusInternalServerError)
+	message := fmt.Sprintf("Halaman tidak ditemukan")
+
+	if err := theApp.TemplateError.Execute(w, message); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func (theApp *App) NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id string) {
-	payload := map[string]interface{}{
-		"Id": id,
-	}
+func (theApp *App) NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id, process string) {
+	w.WriteHeader(http.StatusOK) // for clarity
 
-	if err := theApp.TemplateNoData.Execute(w, payload); err != nil {
+	processName, _ := ProcessLib[process]
+
+	message := fmt.Sprintf("Data pasien %s untuk %s tidak tersedia", id, processName)
+
+	if err := theApp.TemplateError.Execute(w, message); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
