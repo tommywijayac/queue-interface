@@ -432,6 +432,8 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (theApp *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+
 	if tmplErr := theApp.TemplateError.Execute(w, nil); tmplErr != nil {
 		http.Error(w, tmplErr.Error(), http.StatusInternalServerError)
 	}
@@ -585,6 +587,7 @@ func (theApp *App) InternalLogoutHandler(w http.ResponseWriter, r *http.Request)
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
 	session.Values["authenticated"] = false
 	session.Values["changes-saved"] = false
+	session.Options.MaxAge = -1
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/kmn-internal", http.StatusSeeOther)
