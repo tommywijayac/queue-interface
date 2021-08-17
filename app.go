@@ -281,6 +281,9 @@ func (theApp *App) Initialize() {
 	theApp.notificationViper = viper.New()
 	theApp.notificationViper.SetConfigFile(notificationConfig)
 	theApp.notificationPolicy = bluemonday.UGCPolicy()
+
+	// Set global default value of cookie expiry duration
+	loggedUserSession.MaxAge(60 * 30) // 30 minute
 }
 
 func (theApp *App) Run(addr string) {
@@ -596,9 +599,6 @@ func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) 
 		// Success
 		// Store session
 		session, _ := loggedUserSession.New(r, "authenticated-user-session")
-		session.Options = &sessions.Options{
-			MaxAge: 60 * 30, // 30 minute
-		}
 		session.Values["username"] = username
 		session.Values["authenticated"] = true
 		session.Values["changes-saved"] = false
