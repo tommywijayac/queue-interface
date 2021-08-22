@@ -66,7 +66,7 @@ var (
 	TemplateLogin            *template.Template
 	TemplateEditNotification *template.Template
 
-	DB       []*sql.DB
+	DB       *sql.DB
 	Branches []BranchData
 
 	RoomMap     map[string]map[string]RoomData //process code -> room code -> room data
@@ -240,19 +240,14 @@ func readRoomConfig(process string) {
 func Initialize() {
 	var err error
 
-	DB = make([]*sql.DB, len(Branches))
-	for i, branch := range Branches {
-		// Connect to database
-		connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s",
-			branch.DatabaseUser,
-			branch.DatabasePswd,
-			branch.DatabaseAddr,
-			branch.DatabaseName)
-
-		DB[i], err = sql.Open("mysql", connectionString)
-		if err != nil {
-			panic("sql open err" + err.Error())
-		}
+	connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s",
+		AppConfig.DatabaseUser,
+		AppConfig.DatabasePswd,
+		AppConfig.DatabaseAddr,
+		AppConfig.DatabaseName)
+	DB, err = sql.Open("mysql", connectionString)
+	if err != nil {
+		panic("sql open err" + err.Error())
 	}
 
 	// Initialize routes
@@ -368,7 +363,7 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		// [TODO] redirect to index/search
 		return
 	}
-	branchString, branchID := GetBranchInfo(branch)
+	branchString, _ := GetBranchInfo(branch)
 
 	// Validate and sanitize process
 	process := r.FormValue("process")
@@ -389,7 +384,7 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// [TODO] update database query based on actual database design
-	logs, err := GetQueueLogs(DB[branchID], fullId)
+	logs, err := GetQueueLogs(DB, fullId)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
