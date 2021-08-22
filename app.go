@@ -77,10 +77,9 @@ var (
 )
 
 type RoomData struct {
-	Name      string `mapstructure:"name"`
-	Code      string `mapstructure:"code"`
-	GroupCode string `mapstructure:"group-code"`
-	Order     int    `mapstructure:"order"`
+	Name  string `mapstructure:"name"`
+	Code  string `mapstructure:"code"`
+	Order int    `mapstructure:"order"`
 }
 
 type RoomDisplay struct {
@@ -90,13 +89,10 @@ type RoomDisplay struct {
 }
 
 type BranchData struct {
-	Name string `mapstructure:"name"`
-	Code string `mapstructure:"code"`
-
-	DatabaseAddr string `mapstructure:"db-addr"`
-	DatabaseUser string `mapstructure:"db-user"`
-	DatabasePswd string `mapstructure:"db-pswd"`
-	DatabaseName string `mapstructure:"db-name"`
+	Name     string `mapstructure:"name"`
+	Code     string `mapstructure:"code"`
+	ID       string `mapstructure:"id"`
+	Password string `mapstructure:"password"`
 }
 
 func validateBranch(branchesRef []BranchData, branchCode string) bool {
@@ -190,9 +186,6 @@ func ReadConfig() bool {
 
 	readRoomConfig("opr")
 	readRoomConfig("pol")
-
-	// Read registered users
-	viper.UnmarshalKey("registered-users", &creds)
 
 	return true
 }
@@ -516,11 +509,6 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 
 //========================================================================//
 // ** Internal Pages Implementation **//
-type Credential struct {
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-}
-
 type RoomNotification struct {
 	Code         string
 	Name         string
@@ -528,7 +516,6 @@ type RoomNotification struct {
 }
 
 var (
-	creds              = []Credential{}
 	loggedUserSession  *sessions.CookieStore
 	notificationConfig = "./notification.json"
 )
@@ -574,9 +561,9 @@ func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 
 		auth := false
-		for _, cred := range creds {
-			if cred.Username == username {
-				err := bcrypt.CompareHashAndPassword([]byte(cred.Password), []byte(password))
+		for _, branch := range Branches {
+			if branch.Code == username {
+				err := bcrypt.CompareHashAndPassword([]byte(branch.Password), []byte(password))
 				if err != nil { // user found but password doesn't match
 					http.Error(w, "User and password combination doesn't match any records", http.StatusUnauthorized)
 					return
