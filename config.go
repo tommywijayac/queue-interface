@@ -43,30 +43,21 @@ type Config struct {
 
 func (cfg *Config) readConfig() {
 	viper.SetConfigFile("./config.env")
-	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(fmt.Errorf("ER002: Fatal error - config file: %s", err.Error()))
 	}
 
-	var temp string
-	temp = viper.Get("PRIMARY_SESSION_KEY_AUTH").(string)
-	cfg.PrimaryKey.Auth = []byte(temp)
+	readEnvByteConfig("PRIMARY_SESSION_KEY_AUTH", &cfg.PrimaryKey.Auth, []byte("super-secret-key-auth-first"))
+	readEnvByteConfig("PRIMARY_SESSION_KEY_ENCRYPT", &cfg.PrimaryKey.Encrypt, []byte("super-secret-key-encrypt-first"))
+	readEnvByteConfig("SECONDARY_SESSION_KEY_AUTH", &cfg.SecondaryKey.Auth, []byte("super-secret-key-auth-second"))
+	readEnvByteConfig("SECONDARY_SESSION_KEY_ENCRYPT", &cfg.SecondaryKey.Encrypt, []byte("super-secret-key-encrypt-second"))
 
-	temp = viper.Get("PRIMARY_SESSION_KEY_ENCRYPT").(string)
-	cfg.PrimaryKey.Encrypt = []byte(temp)
-
-	temp = viper.Get("SECONDARY_SESSION_KEY_AUTH").(string)
-	cfg.SecondaryKey.Auth = []byte(temp)
-
-	temp = viper.Get("PRIMARY_SESSION_KEY_ENCRYPT").(string)
-	cfg.SecondaryKey.Encrypt = []byte(temp)
-
-	cfg.Port = viper.GetString("PORT")
-	cfg.DatabaseAddr = viper.GetString("DB_ADDRESS")
-	cfg.DatabaseName = viper.GetString("DB_NAME")
-	cfg.DatabaseUser = viper.GetString("DB_USER")
-	cfg.DatabasePswd = viper.GetString("DB_PASSWORD")
+	readEnvStringConfig("PORT", &cfg.Port, "8080")
+	readEnvStringConfig("DB_ADDRESS", &cfg.DatabaseAddr, "127.0.0.1:3030")
+	readEnvStringConfig("DB_NAME", &cfg.DatabaseName, "kmn_queue")
+	readEnvStringConfig("DB_USER", &cfg.DatabaseUser, "root")
+	readEnvStringConfig("DB_PASSWORD", &cfg.DatabasePswd, "")
 
 	// Read configuration file
 	viper.SetConfigFile("./config.json")
@@ -95,6 +86,24 @@ func (cfg *Config) readConfig() {
 
 	cfg.readRoomConfig("opr")
 	cfg.readRoomConfig("pol")
+}
+
+func readEnvByteConfig(key string, dest *[]byte, default_value []byte) {
+	if temp := viper.Get(key); temp != nil {
+		*dest = []byte(temp.(string))
+	} else {
+		*dest = default_value
+		fmt.Printf("%v is set with default value.\n", key)
+	}
+}
+
+func readEnvStringConfig(key string, dest *string, default_value string) {
+	if temp := viper.GetString(key); temp != "" {
+		*dest = temp
+	} else {
+		*dest = default_value
+		fmt.Printf("%v is set with default value.\n", key)
+	}
 }
 
 // Helper function to simplify room config assignment for each process
