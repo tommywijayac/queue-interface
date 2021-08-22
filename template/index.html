@@ -40,7 +40,7 @@
 
                         <label class="mb-3">pilih lokasi:</label>
                         <div style="text-align-last: center;">
-                            <select class="selectpicker w-100" style="text-align-last: center;" name="branch">
+                            <select class="selectpicker w-100" style="text-align-last: center;" name="branch" id="branch" onchange="updateProcess()">
                                 {{ range $branch := .Branches }}
                                     <option value="{{ $branch.Code }}" class="text-center">{{ $branch.Name }}</option>
                                 {{ end }}
@@ -53,11 +53,11 @@
                         <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
                     {{ range $index, $process := .Processes }}
                         {{ if eq $index 0 }}
-                            <label class="btn btn-outline-primary w-100 active p-3">
+                            <label class="btn btn-outline-primary w-100 active p-3" id="{{ $process.Code }}">
                                 <input type="radio" class="btn-check" name="process" value="{{ $process.Code }}" autocomplete="off" checked>{{ $process.Name }}
                             </label>
                         {{ else }}
-                            <label class="btn btn-outline-primary w-100 p-3">
+                            <label class="btn btn-outline-primary w-100 p-3" id="{{ $process.Code }}">
                                 <input type="radio" class="btn-check" name="process" value="{{ $process.Code }}" autocomplete="off">{{ $process.Name }}
                             </label>
                         {{ end }}
@@ -83,14 +83,14 @@
                     </form>
                 </div>
             </div>
-        </div>      
+        </div>
+        
+        <script>
+            $(document).ready(function () {
+                $('.selectpicker').selectpicker();
+            });
+        </script>
+        <script src="/static/js/rtc.js"></script>
+        <script src="/static/js/search.js"></script>  
     </body>
-    
-    <script>
-        $(document).ready(function () {
-            $('.selectpicker').selectpicker();
-        });
-    </script>
-    <script src="/static/js/rtc.js"></script>
-    <script src="/static/js/search.js"></script>  
 </html>
