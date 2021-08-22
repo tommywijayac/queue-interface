@@ -192,7 +192,7 @@ func (theApp *App) ReadConfig() bool {
 	theApp.readRoomConfig("pol")
 
 	// Read registered users
-	viper.UnmarshalKey("registeredUsers", &creds)
+	viper.UnmarshalKey("registered-users", &creds)
 
 	return true
 }

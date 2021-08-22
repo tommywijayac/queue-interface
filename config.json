@@ -108,7 +108,7 @@
         }
     },
 
-    "registeredUsers" : [
+    "registered-users" : [
 		{
 			"username": "kbj",
 			"password": "$2a$08$2/uzWHUAMMdHURhUuIKuc.LLeSHYJgzc0NxgxFhFXgvJC0fo6xqTK"
