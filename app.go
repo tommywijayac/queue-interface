@@ -54,8 +54,6 @@ func validateProcess(processCode string) bool {
 	return exist
 }
 
-const MAX_ROOM int = 10
-
 var (
 	Router *mux.Router
 
@@ -66,62 +64,16 @@ var (
 	TemplateLogin            *template.Template
 	TemplateEditNotification *template.Template
 
-	DB       *sql.DB
-	Branches []BranchData
-
-	RoomMap     map[string]map[string]RoomData //process code -> room code -> room data
-	OrderedRoom map[string]map[int]string      //process code -> room order -> room code
+	DB *sql.DB
 
 	notificationViper  *viper.Viper
 	notificationPolicy *bluemonday.Policy
 )
 
-type RoomData struct {
-	Name  string `mapstructure:"name"`
-	Code  string `mapstructure:"code"`
-	Order int    `mapstructure:"order"`
-}
-
 type RoomDisplay struct {
 	IsActive bool
 	Name     string
 	Time     string
-}
-
-type BranchData struct {
-	Name     string `mapstructure:"name"`
-	Code     string `mapstructure:"code"`
-	ID       string `mapstructure:"id"`
-	Password string `mapstructure:"password"`
-}
-
-func validateBranch(branchesRef []BranchData, branchCode string) bool {
-	exp := regexp.MustCompile(`^[a-z]{3}$`)
-	if valid := exp.MatchString(branchCode); !valid {
-		return false
-	}
-
-	for _, branchRef := range branchesRef {
-		if branchCode == branchRef.Code {
-			return true
-		}
-	}
-	return false
-}
-
-func GetBranchInfo(branchCode string) (string, int) {
-	// Match URL path {branch} with config file
-	branch := ""
-	i := 0
-	for i < len(Branches) {
-		if Branches[i].Code == branchCode {
-			branch = Branches[i].Name
-			break
-		}
-		i++
-	}
-
-	return branch, i
 }
 
 // Prevent directory traversal by serving index.html in our static web server
@@ -154,80 +106,6 @@ func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
 	}
 
 	return f, nil
-}
-
-func ReadConfig() bool {
-	var err error
-
-	// Read configuration file
-	viper.SetConfigFile("./config.json")
-	err = viper.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("ER002: Fatal error - config file: %s", err.Error()))
-	}
-
-	// Read branch configuration
-	err = viper.UnmarshalKey("branch", &Branches)
-	if err != nil {
-		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
-	}
-	if len(Branches) == 0 {
-		panic(fmt.Errorf("ER005: Fatal error - no Branch endpoint defined"))
-	}
-
-	// Read room configuration
-	RoomMap = make(map[string]map[string]RoomData)
-	RoomMap["opr"] = make(map[string]RoomData)
-	RoomMap["pol"] = make(map[string]RoomData)
-
-	OrderedRoom = make(map[string]map[int]string)
-	OrderedRoom["opr"] = make(map[int]string)
-	OrderedRoom["pol"] = make(map[int]string)
-
-	readRoomConfig("opr")
-	readRoomConfig("pol")
-
-	return true
-}
-
-func readRoomConfig(process string) {
-	var rooms []RoomData
-	var key string
-
-	key = fmt.Sprintf("process.%s.room", process)
-	err := viper.UnmarshalKey(key, &rooms)
-	if err != nil {
-		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
-	}
-	// Limit the number of visible room regardless of config file
-	// (hard-coded limitation for Released application)
-	key = fmt.Sprintf("process.%s.visible-room", process)
-	roomCount := viper.GetInt(key)
-	if roomCount < 0 {
-		roomCount = 0
-	} else if roomCount > MAX_ROOM {
-		roomCount = MAX_ROOM
-	}
-	rooms = rooms[:roomCount] //prune
-
-	// Validate data
-	if len(rooms) == 0 {
-		panic(fmt.Errorf("ER004: Fatal config error - missing room details"))
-	}
-
-	// Map room. We can't directly marshal to map because we add hard-coded limitation with trimming
-	// which is easier done in slice
-	collision := 1
-	for i := 0; i < len(rooms); i++ {
-		RoomMap[process][rooms[i].Code] = rooms[i]
-
-		if _, exist := OrderedRoom[process][rooms[i].Order]; !exist {
-			OrderedRoom[process][rooms[i].Order] = rooms[i].Code
-		} else {
-			OrderedRoom[process][rooms[i].Order+collision] = rooms[i].Code
-			collision++
-		}
-	}
 }
 
 func Initialize() {
@@ -326,7 +204,7 @@ func GetNotification(branchCode string, roomCode string) (string, string) {
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	var branchCopy []BranchData
-	for _, branch := range Branches {
+	for _, branch := range AppConfig.Branches {
 		branchCopy = append(branchCopy, BranchData{
 			Name: branch.Name,
 			Code: branch.Code,
@@ -351,12 +229,12 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	// Validate and sanitize branch
 	branch := r.FormValue("branch")
 	// fmt.Println(branch)
-	if valid := validateBranch(Branches, branch); !valid {
+	if valid := AppConfig.validateBranch(branch); !valid {
 		http.Error(w, "ERR: Invalid Branch selection", http.StatusBadRequest)
 		// [TODO] redirect to index/search
 		return
 	}
-	branchString, _ := GetBranchInfo(branch)
+	branchString, _ := AppConfig.getBranchInfo(branch)
 
 	// Validate and sanitize process
 	process := r.FormValue("process")
@@ -453,7 +331,7 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 
 	// Translate Room code into Room name, and populate array result
 	for _, log := range logs {
-		if roomMap, exist := RoomMap[processCode][log.Room]; exist {
+		if roomMap, exist := AppConfig.RoomMap[processCode][log.Room]; exist {
 			var rd = RoomDisplay{
 				Name:     roomMap.Name,
 				Time:     log.Time.Format("15:04:05"),
@@ -484,11 +362,11 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 	// Remember last room data (closest to current time), would be set as active room later
 	activeRoom := logs[len(logs)-1].Room
 
-	n := len(RoomMap[processCode])
+	n := len(AppConfig.RoomMap[processCode])
 	for i := 0; i < n; i++ {
-		if code, exist := OrderedRoom[processCode][i]; exist {
+		if code, exist := AppConfig.OrderedRoom[processCode][i]; exist {
 			var rd = RoomDisplay{
-				Name:     RoomMap[processCode][code].Name,
+				Name:     AppConfig.RoomMap[processCode][code].Name,
 				Time:     "",
 				IsActive: code == activeRoom,
 			}
@@ -561,7 +439,7 @@ func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 
 		auth := false
-		for _, branch := range Branches {
+		for _, branch := range AppConfig.Branches {
 			if branch.Code == username {
 				err := bcrypt.CompareHashAndPassword([]byte(branch.Password), []byte(password))
 				if err != nil { // user found but password doesn't match
@@ -625,19 +503,19 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 	// 1. Translate username, which is branch code, into branch name
 	branchCode := fmt.Sprintf("%v", session.Values["username"])
 	branchName := ""
-	for _, branchData := range Branches {
+	for _, branchData := range AppConfig.Branches {
 		if branchData.Code == branchCode {
 			branchName = branchData.Name
 		}
 	}
 	// 2. Get rooms in config.json and prepare controls for each one
-	oprRoomCount := len(RoomMap["opr"])
-	polRoomCount := len(RoomMap["pol"])
+	oprRoomCount := len(AppConfig.RoomMap["opr"])
+	polRoomCount := len(AppConfig.RoomMap["pol"])
 
 	oprRooms := make([]RoomNotification, 0)
 	for i := 0; i < oprRoomCount; i++ {
-		if code, exist := OrderedRoom["opr"][i]; exist {
-			roomData := RoomMap["opr"][code]
+		if code, exist := AppConfig.OrderedRoom["opr"][i]; exist {
+			roomData := AppConfig.RoomMap["opr"][code]
 
 			oprRooms = append(oprRooms, RoomNotification{
 				Name:         roomData.Name,
@@ -648,8 +526,8 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 	}
 	polRooms := make([]RoomNotification, 0)
 	for i := 0; i < polRoomCount; i++ {
-		if code, exist := OrderedRoom["pol"][i]; exist {
-			roomData := RoomMap["pol"][code]
+		if code, exist := AppConfig.OrderedRoom["pol"][i]; exist {
+			roomData := AppConfig.RoomMap["pol"][code]
 
 			polRooms = append(polRooms, RoomNotification{
 				Name:         roomData.Name,
@@ -736,13 +614,13 @@ func InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Reque
 	notificationViper.Set(key, branchNotification)
 
 	// Because we create control based on RoomMap, then we can assume the control exist with our defined ID (room code)
-	oprRoomCount := len(RoomMap["opr"])
-	polRoomCount := len(RoomMap["pol"])
+	oprRoomCount := len(AppConfig.RoomMap["opr"])
+	polRoomCount := len(AppConfig.RoomMap["pol"])
 
 	// Get and sanitize all input
 	for i := 0; i < oprRoomCount; i++ {
-		if code, exist := OrderedRoom["opr"][i]; exist {
-			roomData := RoomMap["opr"][code]
+		if code, exist := AppConfig.OrderedRoom["opr"][i]; exist {
+			roomData := AppConfig.RoomMap["opr"][code]
 
 			// Sanitize input
 			notification := SanitizeNotificationInput(r.FormValue(roomData.Code))
@@ -753,8 +631,8 @@ func InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	for i := 0; i < polRoomCount; i++ {
-		if code, exist := OrderedRoom["pol"][i]; exist {
-			roomData := RoomMap["pol"][code]
+		if code, exist := AppConfig.OrderedRoom["pol"][i]; exist {
+			roomData := AppConfig.RoomMap["pol"][code]
 
 			// Sanitize input
 			notification := SanitizeNotificationInput(r.FormValue(roomData.Code))
