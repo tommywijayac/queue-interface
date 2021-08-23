@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const MAX_ROOM int = 10
+
 type SessionKey struct {
 	Auth    []byte
 	Encrypt []byte
@@ -45,7 +47,7 @@ func (cfg *Config) readConfig() {
 	viper.SetConfigFile("./config.env")
 	err := viper.ReadInConfig()
 	if err != nil {
-		panic(fmt.Errorf("ER002: Fatal error - config file: %s", err.Error()))
+		ErrorLogger.Fatalf("fail to open config.env. %v\n", err)
 	}
 
 	readEnvByteConfig("PRIMARY_SESSION_KEY_AUTH", &cfg.PrimaryKey.Auth, []byte("super-secret-key-auth-first"))
@@ -63,16 +65,16 @@ func (cfg *Config) readConfig() {
 	viper.SetConfigFile("./config.json")
 	err = viper.ReadInConfig()
 	if err != nil {
-		panic(fmt.Errorf("ER002: Fatal error - config file: %s", err.Error()))
+		ErrorLogger.Fatalf("fail to open config.json. %v\n", err)
 	}
 
 	// Read branch configuration
 	err = viper.UnmarshalKey("branch", &cfg.Branches)
 	if err != nil {
-		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
+		ErrorLogger.Fatalf("fail to load branch info from config. %v\n", err)
 	}
 	if len(cfg.Branches) == 0 {
-		panic(fmt.Errorf("ER005: Fatal error - no Branch endpoint defined"))
+		ErrorLogger.Fatalln("no branch endpoint defined in config (possible corrupted file).")
 	}
 
 	// Read room configuration
@@ -93,7 +95,7 @@ func readEnvByteConfig(key string, dest *[]byte, default_value []byte) {
 		*dest = []byte(temp.(string))
 	} else {
 		*dest = default_value
-		fmt.Printf("%v is set with default value.\n", key)
+		InfoLogger.Printf("%v is set with default value.\n", key)
 	}
 }
 
@@ -102,7 +104,7 @@ func readEnvStringConfig(key string, dest *string, default_value string) {
 		*dest = temp
 	} else {
 		*dest = default_value
-		fmt.Printf("%v is set with default value.\n", key)
+		InfoLogger.Printf("%v is set with default value.\n", key)
 	}
 }
 
@@ -114,7 +116,7 @@ func (cfg *Config) readRoomConfig(process string) {
 	key = fmt.Sprintf("process.%s.room", process)
 	err := viper.UnmarshalKey(key, &rooms)
 	if err != nil {
-		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
+		ErrorLogger.Fatalf("fail to load room info from config. %v\n", err)
 	}
 	// Limit the number of visible room regardless of config file
 	// (hard-coded limitation for Released application)
@@ -129,7 +131,7 @@ func (cfg *Config) readRoomConfig(process string) {
 
 	// Validate data
 	if len(rooms) == 0 {
-		panic(fmt.Errorf("ER004: Fatal config error - missing room details"))
+		ErrorLogger.Fatalln("missing room list defined in config (possible corrupted or excessive prune).")
 	}
 
 	// Map room. We can't directly marshal to map because we add hard-coded limitation with trimming

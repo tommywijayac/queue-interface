@@ -1,17 +1,27 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"os"
 )
 
 var (
 	AppConfig Config
 
-	// Const
-	MAX_ROOM = 10
+	// Tools
+	InfoLogger  *log.Logger
+	ErrorLogger *log.Logger
 )
 
 func main() {
+	// Initialize logger
+	file, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal("Fail to initialize logger!")
+	}
+	InfoLogger = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	ErrorLogger = log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+
 	// Read config (static values)
 	AppConfig.readConfig()
 
@@ -19,9 +29,5 @@ func main() {
 	Initialize()
 
 	// Starting the app
-	if AppConfig.Port == "" {
-		fmt.Println("Port set to default")
-		AppConfig.Port = "8080"
-	}
 	Run(AppConfig.Port)
 }

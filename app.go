@@ -118,7 +118,7 @@ func Initialize() {
 		AppConfig.DatabaseName)
 	DB, err = sql.Open("mysql", connectionString)
 	if err != nil {
-		panic("sql open err" + err.Error())
+		ErrorLogger.Fatalf("fail to open sql connection. %v", err)
 	}
 
 	// Initialize routes
@@ -162,7 +162,7 @@ func Run(addr string) {
 		ReadTimeout:  10 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
-	fmt.Println("Launched at localhost", server.Addr)
+	InfoLogger.Printf("app launched at localhost:%v\n", server.Addr)
 	if err := server.ListenAndServe(); err != nil {
 		panic(err.Error())
 	}
@@ -216,13 +216,15 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		"Processes": ProcessLibArr,
 	}
 	if err := TemplateHome.Execute(w, payload); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to execute template for / endpoint. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
 func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to parse input from / endpoint. %v\n", err)
+		http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 		return
 	}
 
@@ -230,7 +232,8 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	branch := r.FormValue("branch")
 	// fmt.Println(branch)
 	if valid := AppConfig.validateBranch(branch); !valid {
-		http.Error(w, "ERR: Invalid Branch selection", http.StatusBadRequest)
+		ErrorLogger.Printf("invalid branch selection. got: %v", branch)
+		http.Error(w, "input cabang tidak valid. silahkan coba lagi.", http.StatusBadRequest)
 		// [TODO] redirect to index/search
 		return
 	}
@@ -240,7 +243,8 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	process := r.FormValue("process")
 	// fmt.Println(process)
 	if valid := validateProcess(process); !valid {
-		http.Error(w, "ERR: Invalid Process selection", http.StatusBadRequest)
+		ErrorLogger.Printf("invalid process selection. got: %v", process)
+		http.Error(w, "input proses tidak valid. silahkan coba lagi.", http.StatusBadRequest)
 		// [TODO] redirect to index/search
 		return
 	}
@@ -249,7 +253,8 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	fullId := r.FormValue("qinput1") + r.FormValue("qinput2") + r.FormValue("qinput3") + r.FormValue("qinput4")
 	fullId, _ = SanitizeID(fullId)
 	if valid := validateID(fullId); !valid {
-		http.Error(w, "ERR: Invalid Queue number", http.StatusBadRequest)
+		ErrorLogger.Printf("invalid queue number. got: %v", fullId)
+		http.Error(w, "input antrian tidak valid. silahkan coba lagi.", http.StatusBadRequest)
 		// [TODO] redirect to index/search
 		return
 	}
@@ -261,7 +266,8 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		case sql.ErrNoRows:
 			NoDataTemplateDisplay(w, r, fullId, process)
 		default:
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			ErrorLogger.Printf("sql query failed. %v", err)
+			http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -295,7 +301,8 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Render output
 	if err := TemplateDisplay.Execute(w, payload); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to execute template for display. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
@@ -305,7 +312,8 @@ func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("Halaman tidak ditemukan")
 
 	if err := TemplateError.Execute(w, message); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to execute template for error. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
@@ -317,7 +325,8 @@ func NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id, process s
 	message := fmt.Sprintf("Data pasien %s untuk %s tidak tersedia", id, processName)
 
 	if err := TemplateError.Execute(w, message); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to execute template for error. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
@@ -409,11 +418,15 @@ func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			// Either no session or session exist but can't be decoded. gorilla.sessions create a new one
 			err := session.Save(r, w) // save the session
 			if err != nil {
-				fmt.Println(err)
+				ErrorLogger.Printf("fail to save kmn-internal session. %v\n", err)
+				http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
+				return
 			} else {
 				// Serve login page
 				if err := TemplateLogin.Execute(w, nil); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					ErrorLogger.Printf("fail to execute template for login. %v\n", err)
+					http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
+					return
 				}
 			}
 		} else {
@@ -424,13 +437,16 @@ func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				// Serve login page
 				if err := TemplateLogin.Execute(w, nil); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					ErrorLogger.Printf("fail to execute template for login. %v\n", err)
+					http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
+					return
 				}
 			}
 		}
 	} else if r.Method == "POST" {
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			ErrorLogger.Printf("fail to parse input from / endpoint. %v\n", err)
+			http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 			return
 		}
 
@@ -443,7 +459,8 @@ func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			if branch.Code == username {
 				err := bcrypt.CompareHashAndPassword([]byte(branch.Password), []byte(password))
 				if err != nil { // user found but password doesn't match
-					http.Error(w, "User and password combination doesn't match any records", http.StatusUnauthorized)
+					InfoLogger.Printf("No matching user-password combination. Inputted User: %v. Password: %v", username, password)
+					http.Error(w, "Kombinasi User and password tidak terdaftar.", http.StatusUnauthorized)
 					return
 				}
 
@@ -452,7 +469,8 @@ func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !auth { // user not found
-			http.Error(w, "User and password combination doesnt match any records", http.StatusForbidden)
+			InfoLogger.Printf("No matching user-password combination. Inputted User: %v. Password: %v", username, password)
+			http.Error(w, "Kombinasi User and password tidak terdaftar.", http.StatusUnauthorized)
 			return
 		}
 
@@ -464,7 +482,9 @@ func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		session.Values["changes-saved"] = false
 		err := session.Save(r, w)
 		if err != nil {
-			fmt.Println(err)
+			ErrorLogger.Printf("fail to save kmn-internal session. %v\n", err)
+			http.Error(w, "Fail to initialize session", http.StatusInternalServerError)
+			return
 		}
 
 		// Redirect to notification page
@@ -495,7 +515,8 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 	// Reject unauthenticated access
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
 	if !CheckRequestSession(session) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		InfoLogger.Printf("unauthenticated access to kmn-internal page method GET. user: %v\n", session.Values["username"])
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -578,7 +599,8 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 	session.Save(r, w)
 
 	if err := TemplateEditNotification.Execute(w, payload); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to execute template for edit notification. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
@@ -595,13 +617,15 @@ func InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Reque
 	// Reject unauthenticated access
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
 	if !CheckRequestSession(session) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		InfoLogger.Printf("unauthenticated access to kmn-internal page method POST. user: %v\n", session.Values["username"])
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	branchCode := fmt.Sprintf("%v", session.Values["username"])
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to parse input from / endpoint. %v\n", err)
+		http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 		return
 	}
 
