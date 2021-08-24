@@ -237,7 +237,7 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		// [TODO] redirect to index/search
 		return
 	}
-	branchString, _ := AppConfig.getBranchInfo(branch)
+	branchName, branchID := AppConfig.getBranchInfo(branch)
 
 	// Validate and sanitize process
 	process := r.FormValue("process")
@@ -250,21 +250,20 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate and sanitize queue number
-	fullId := r.FormValue("qinput1") + r.FormValue("qinput2") + r.FormValue("qinput3") + r.FormValue("qinput4")
-	fullId, _ = SanitizeID(fullId)
-	if valid := validateID(fullId); !valid {
-		ErrorLogger.Printf("invalid queue number. got: %v", fullId)
+	fullID := r.FormValue("qinput1") + r.FormValue("qinput2") + r.FormValue("qinput3") + r.FormValue("qinput4")
+	fullID, _ = SanitizeID(fullID)
+	if valid := validateID(fullID); !valid {
+		ErrorLogger.Printf("invalid queue number. got: %v", fullID)
 		http.Error(w, "input antrian tidak valid. silahkan coba lagi.", http.StatusBadRequest)
 		// [TODO] redirect to index/search
 		return
 	}
 
-	// [TODO] update database query based on actual database design
-	logs, err := GetQueueLogs(DB, fullId)
+	logs, err := GetQueueLogs(DB, branchID, fullID)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			NoDataTemplateDisplay(w, r, fullId, process)
+			NoDataTemplateDisplay(w, r, fullID, process)
 		default:
 			ErrorLogger.Printf("sql query failed. %v", err)
 			http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
@@ -284,7 +283,7 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
 	// Trying to modify the active with below method would crash
 	if len(roomDisplay) == 0 {
-		NoDataTemplateDisplay(w, r, fullId, process)
+		NoDataTemplateDisplay(w, r, fullID, process)
 		return
 	}
 
@@ -292,8 +291,8 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	branchNotification, roomNotification := GetNotification(branch, r.FormValue("qinput1"))
 
 	payload := map[string]interface{}{
-		"Branch":             branchString,
-		"Id":                 fullId,
+		"Branch":             branchName,
+		"Id":                 fullID,
 		"Rooms":              roomDisplay,
 		"BranchNotification": branchNotification,
 		"RoomNotification":   roomNotification,
@@ -340,7 +339,7 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 
 	// Translate Room code into Room name, and populate array result
 	for _, log := range logs {
-		if roomMap, exist := AppConfig.RoomMap[processCode][log.Room]; exist {
+		if roomMap, exist := AppConfig.RoomMap[processCode][log.Group]; exist {
 			var rd = RoomDisplay{
 				Name:     roomMap.Name,
 				Time:     log.Time.Format("15:04:05"),
@@ -369,7 +368,7 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 	})
 
 	// Remember last room data (closest to current time), would be set as active room later
-	activeRoom := logs[len(logs)-1].Room
+	activeRoom := logs[len(logs)-1].Group
 
 	n := len(AppConfig.RoomMap[processCode])
 	for i := 0; i < n; i++ {

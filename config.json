@@ -49,7 +49,7 @@
             ]
         } ,
         "pol" : {
-            "visible-room": 8,
+            "visible-room": 5,
             "room": [
                 { 
                     "name": "Registrasi",
@@ -67,14 +67,14 @@
                     "name": "Ruang Konsul",
                     "code": "POLI"
                 } , {
-                    "name": "Pemeriksaan Penunjang",
-                    "code": "F"
+                    "name": "",
+                    "code": ""
                 } , {
-                    "name": "Laboratorium",
-                    "code": "G"
+                    "name": "",
+                    "code": ""
                 } , {
-                    "name": "R. Tindakan",
-                    "code": "H"
+                    "name": "",
+                    "code": ""
                 } , {
                     "name": "",
                     "code": ""

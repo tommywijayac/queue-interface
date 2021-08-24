@@ -149,19 +149,19 @@ func (cfg *Config) readRoomConfig(process string) {
 	}
 }
 
-func (cfg *Config) getBranchInfo(branchCode string) (string, int) {
-	// Match URL path {branch} with config file
-	branch := ""
+func (cfg *Config) getBranchInfo(branchCode string) (string, string) {
+	branchName, branchID := "", ""
 	i := 0
 	for i < len(cfg.Branches) {
 		if cfg.Branches[i].Code == branchCode {
-			branch = cfg.Branches[i].Name
+			branchName = cfg.Branches[i].Name
+			branchID = cfg.Branches[i].ID
 			break
 		}
 		i++
 	}
 
-	return branch, i
+	return branchName, branchID
 }
 
 func (cfg *Config) validateBranch(branchCode string) bool {
