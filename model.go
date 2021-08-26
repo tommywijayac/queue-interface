@@ -27,7 +27,7 @@ func GetQueueLogs(db *sql.DB, branchID, patientID string) ([]PatientLog, error) 
 	date := "2021-08-24"
 
 	// Read data from database
-	rows, err := db.Query("SELECT kelompok, ruang, jam FROM antri WHERE (lokasi=? AND nomor=? AND tanggal=? AND status=?) ORDER BY jam", branchID, patientID, date, "O")
+	rows, err := db.Query("SELECT kelompok, ruang, jam FROM antri WHERE (lokasi=? AND nomor=? AND tanggal=? AND status=?) ORDER BY jam", branchID, patientID, date, "I")
 	if err != nil {
 		return nil, err
 	}
