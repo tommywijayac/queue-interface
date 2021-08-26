@@ -380,7 +380,7 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 			}
 
 			for _, log := range logs {
-				if log.Room == code {
+				if log.Group == code {
 					rd.Time = log.Time.Format("15:04:05")
 					break
 				}
