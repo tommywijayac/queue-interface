@@ -3,38 +3,28 @@
         {
             "code": "kbj",
             "name": "Kebon Jeruk",
-            "db-addr": "127.0.0.1:3300",
-            "db-user": "root",
-            "db-pswd": "",
-            "db-name": "kmn_queue"
+            "password": "$2a$08$2/uzWHUAMMdHURhUuIKuc.LLeSHYJgzc0NxgxFhFXgvJC0fo6xqTK",
+            "id": "kmn02"
         }, {
             "code": "kmy",
             "name": "Kemayoran",
-            "db-addr": "127.0.0.1:3300",
-            "db-user": "root",
-            "db-pswd": "",
-            "db-name": "kmn_queue"
+            "password": "$2a$08$tBUtIasxLx7mh7H//ttp7.F6FLFjlFaoz5Sn82iXQTPFug5/RcvfW",
+            "id": "kmn01"
         }, {
             "code": "jsl",
             "name": "Jakarta Selatan",
-            "db-addr": "127.0.0.1:3300",
-            "db-user": "root",
-            "db-pswd": "",
-            "db-name": "kmn_queue"
+            "password": "$2a$08$ga.t/hUQ9q/C0hsO71gAN.lTJm5kUpqfF7KXeHLWRNm/1jIFIZ81m",
+            "id": "kmn06"
         }, {
             "code": "pik",
             "name": "Pantai Indah Kapuk",
-            "db-addr": "127.0.0.1:3300",
-            "db-user": "root",
-            "db-pswd": "",
-            "db-name": "kmn_queue"
+            "password": "$2a$08$E83snEjRfxBeA7F.d8kPMe1BM8FBxFPhBJzsITWvOmLfcUOXyD7ZO",
+            "id": "kmn08"
         }, {
             "code": "smg",
             "name": "Semarang",
-            "db-addr": "127.0.0.1:3300",
-            "db-user": "root",
-            "db-pswd": "",
-            "db-name": "kmn_queue"
+            "password": "$2a$08$RNv9LKqSBRf5ki8NbKHJbuaDMYJzdBJsmFCn16t/n4xY6ZWtMhtLG",
+            "id": "kmn05"
         }
     ],
 
@@ -43,91 +33,56 @@
             "visible-room": 3,
             "room" : [
                 {
-                    "name": "R. Persiapan Tindakan",
-                    "code": "X",
-                    "group-code": "GX",
+                    "name": "Ruang Persiapan Tindakan",
+                    "code": "SD",
                     "order": 0
                 }, {
-                    "name": "R. Tindakan",
-                    "code": "Y",
+                    "name": "Ruang Tindakan",
+                    "code": "SD",
                     "group-code": "GY",
                     "order": 1
                 }, {
-                    "name": "R. Pemulihan",
-                    "code": "Z",
-                    "group-code": "GZ",
+                    "name": "Ruang Pemulihan",
+                    "code": "SD",
                     "order": 2
                 }
             ]
         } ,
         "pol" : {
-            "visible-room": 8,
+            "visible-room": 5,
             "room": [
                 { 
                     "name": "Registrasi",
-                    "code": "A",
-                    "group-code": "GA"
+                    "code": "REG"
                 }, {
                     "name": "Rekam Medik",
-                    "code": "B",
-                    "group-code": "GA"
+                    "code": "RM"
                 }, {
                     "name": "Pemeriksaan Awal",
-                    "code": "C",
-                    "group-code": "GB"
+                    "code": "PA"
                 } , {
                     "name": "Refraksi",
-                    "code": "D",
-                    "group-code": "GB"
+                    "code": "REF"
                 } , {
-                    "name": "R. Konsul",
-                    "code": "E",
-                    "group-code": "GC"
-                } , {
-                    "name": "Pemeriksaan Penunjang",
-                    "code": "F",
-                    "group-code": "GC"
-                } , {
-                    "name": "Laboratorium",
-                    "code": "G",
-                    "group-code": "GC"
-                } , {
-                    "name": "R. Tindakan",
-                    "code": "H",
-                    "group-code": "GD"
+                    "name": "Ruang Konsul",
+                    "code": "POLI"
                 } , {
                     "name": "",
-                    "code": "",
-                    "group-code": ""
+                    "code": ""
                 } , {
                     "name": "",
-                    "code": "",
-                    "group-code": ""
+                    "code": ""
+                } , {
+                    "name": "",
+                    "code": ""
+                } , {
+                    "name": "",
+                    "code": ""
+                } , {
+                    "name": "",
+                    "code": ""
                 }        
             ]
         }
-    },
-
-    "registeredUsers" : [
-		{
-			"username": "kbj",
-			"password": "$2a$08$2/uzWHUAMMdHURhUuIKuc.LLeSHYJgzc0NxgxFhFXgvJC0fo6xqTK"
-		},
-		{
-			"username": "jsl",
-			"password": "$2a$08$tBUtIasxLx7mh7H//ttp7.F6FLFjlFaoz5Sn82iXQTPFug5/RcvfW"
-		},
-		{
-			"username": "kmy",
-			"password": "$2a$08$ga.t/hUQ9q/C0hsO71gAN.lTJm5kUpqfF7KXeHLWRNm/1jIFIZ81m"
-		},
-		{
-			"username": "pik",
-			"password": "$2a$08$E83snEjRfxBeA7F.d8kPMe1BM8FBxFPhBJzsITWvOmLfcUOXyD7ZO"
-		},
-		{
-			"username": "smg",
-			"password": "$2a$08$RNv9LKqSBRf5ki8NbKHJbuaDMYJzdBJsmFCn16t/n4xY6ZWtMhtLG"
-		}
-	]
+    }
 }

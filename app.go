@@ -25,21 +25,24 @@ type ProcessData struct {
 	Code string
 }
 
-// always return constant slice of ProcessData
-// here, we do hard-code limitation on allowable process
 // if new process were to be added, must modify below function and also config file
-func getProcess() []ProcessData {
-	var processes []ProcessData
-	processes = append(processes, ProcessData{
-		Code: "opr",
-		Name: "Operasi",
-	})
-	processes = append(processes, ProcessData{
-		Code: "pol",
-		Name: "Poli / Rawat Jalan",
-	})
-	return processes
-}
+var (
+	ProcessLibMap = map[string]string{
+		"opr": "Operasi",
+		"pol": "Poli / Rawat Jalan",
+	}
+
+	// For populating HTML controls, we want it to be consistent, so array is used
+	ProcessLibArr = []ProcessData{
+		{
+			Code: "opr",
+			Name: "Operasi",
+		}, {
+			Code: "pol",
+			Name: "Poli / Rawat Jalan",
+		},
+	}
+)
 
 func validateProcess(processCode string) bool {
 	exp := regexp.MustCompile(`^[a-z]{3}$`)
@@ -47,88 +50,30 @@ func validateProcess(processCode string) bool {
 		return false
 	}
 
-	processesRef := getProcess()
-	for _, processRef := range processesRef {
-		if processCode == processRef.Code {
-			return true
-		}
-	}
-	return false
+	_, exist := ProcessLibMap[processCode]
+	return exist
 }
 
-const MAX_ROOM int = 10
-
-type App struct {
+var (
 	Router *mux.Router
 
 	TemplateHome             *template.Template
 	TemplateSearch           *template.Template
 	TemplateDisplay          *template.Template
 	TemplateError            *template.Template
-	TemplateNoData           *template.Template
 	TemplateLogin            *template.Template
 	TemplateEditNotification *template.Template
 
-	DB       []*sql.DB
-	Branches []BranchData
-
-	RoomMap     map[string]map[string]RoomData //process code -> room code -> room data
-	OrderedRoom map[string]map[int]string      //process code -> room order -> room code
+	DB *sql.DB
 
 	notificationViper  *viper.Viper
 	notificationPolicy *bluemonday.Policy
-}
-
-type RoomData struct {
-	Name      string `mapstructure:"name"`
-	Code      string `mapstructure:"code"`
-	GroupCode string `mapstructure:"group-code"`
-	Order     int    `mapstructure:"order"`
-}
+)
 
 type RoomDisplay struct {
 	IsActive bool
 	Name     string
 	Time     string
-}
-
-type BranchData struct {
-	Name string `mapstructure:"name"`
-	Code string `mapstructure:"code"`
-
-	DatabaseAddr string `mapstructure:"db-addr"`
-	DatabaseUser string `mapstructure:"db-user"`
-	DatabasePswd string `mapstructure:"db-pswd"`
-	DatabaseName string `mapstructure:"db-name"`
-}
-
-func validateBranch(branchesRef []BranchData, branchCode string) bool {
-	exp := regexp.MustCompile(`^[a-z]{3}$`)
-	if valid := exp.MatchString(branchCode); !valid {
-		return false
-	}
-
-	for _, branchRef := range branchesRef {
-		if branchCode == branchRef.Code {
-			return true
-		}
-	}
-	return false
-}
-
-func (theApp *App) GetBranchInfo(branchCode string) (string, int) {
-	// Match URL path {branch} with config file
-	branch := ""
-	i := 0
-	for i < len(theApp.Branches) {
-		if theApp.Branches[i].Code == branchCode {
-			branch = theApp.Branches[i].Name
-			break
-		}
-		i++
-	}
-
-	return branch, i
 }
 
 // Prevent directory traversal by serving index.html in our static web server
@@ -163,140 +108,61 @@ func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
 	return f, nil
 }
 
-func (theApp *App) ReadConfig() bool {
+func Initialize() {
 	var err error
 
-	// Read configuration file
-	viper.SetConfigFile("./config.json")
-	err = viper.ReadInConfig()
+	connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s",
+		AppConfig.DatabaseUser,
+		AppConfig.DatabasePswd,
+		AppConfig.DatabaseAddr,
+		AppConfig.DatabaseName)
+	DB, err = sql.Open("mysql", connectionString)
 	if err != nil {
-		panic(fmt.Errorf("ER002: Fatal error - config file: %s", err.Error()))
-	}
-
-	// Read branch configuration
-	err = viper.UnmarshalKey("branch", &theApp.Branches)
-	if err != nil {
-		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
-	}
-	if len(theApp.Branches) == 0 {
-		panic(fmt.Errorf("ER005: Fatal error - no Branch endpoint defined"))
-	}
-
-	// Read room configuration
-	theApp.RoomMap = make(map[string]map[string]RoomData)
-	theApp.RoomMap["opr"] = make(map[string]RoomData)
-	theApp.RoomMap["pol"] = make(map[string]RoomData)
-
-	theApp.OrderedRoom = make(map[string]map[int]string)
-	theApp.OrderedRoom["opr"] = make(map[int]string)
-	theApp.OrderedRoom["pol"] = make(map[int]string)
-
-	theApp.readRoomConfig("opr")
-	theApp.readRoomConfig("pol")
-
-	// Read registered users
-	viper.UnmarshalKey("registeredUsers", &creds)
-
-	return true
-}
-
-func (theApp *App) readRoomConfig(process string) {
-	var rooms []RoomData
-	var key string
-
-	key = fmt.Sprintf("process.%s.room", process)
-	err := viper.UnmarshalKey(key, &rooms)
-	if err != nil {
-		panic(fmt.Errorf("ER003: Fatal error - reading config file: %s", err.Error()))
-	}
-	// Limit the number of visible room regardless of config file
-	// (hard-coded limitation for Released application)
-	key = fmt.Sprintf("process.%s.visible-room", process)
-	roomCount := viper.GetInt(key)
-	if roomCount < 0 {
-		roomCount = 0
-	} else if roomCount > MAX_ROOM {
-		roomCount = MAX_ROOM
-	}
-	rooms = rooms[:roomCount] //prune
-
-	// Validate data
-	if len(rooms) == 0 {
-		panic(fmt.Errorf("ER004: Fatal config error - missing room details"))
-	}
-
-	// Map room. We can't directly marshal to map because we add hard-coded limitation with trimming
-	// which is easier done in slice
-	collision := 1
-	for i := 0; i < len(rooms); i++ {
-		theApp.RoomMap[process][rooms[i].Code] = rooms[i]
-
-		if _, exist := theApp.OrderedRoom[process][rooms[i].Order]; !exist {
-			theApp.OrderedRoom[process][rooms[i].Order] = rooms[i].Code
-		} else {
-			theApp.OrderedRoom[process][rooms[i].Order+collision] = rooms[i].Code
-			collision++
-		}
-	}
-}
-
-func (theApp *App) Initialize() {
-	var err error
-
-	theApp.DB = make([]*sql.DB, len(theApp.Branches))
-	for i, branch := range theApp.Branches {
-		// Connect to database
-		connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s",
-			branch.DatabaseUser,
-			branch.DatabasePswd,
-			branch.DatabaseAddr,
-			branch.DatabaseName)
-
-		theApp.DB[i], err = sql.Open("mysql", connectionString)
-		if err != nil {
-			panic("sql open err" + err.Error())
-		}
+		ErrorLogger.Fatalf("fail to open sql connection. %v", err)
 	}
 
 	// Initialize routes
-	theApp.Router = mux.NewRouter()
-	theApp.Router.HandleFunc("/", theApp.HomeHandler).Methods("GET")
-	theApp.Router.HandleFunc("/search", theApp.DisplayQueueHandler).Methods("GET")
-	theApp.Router.HandleFunc("/kmn-internal", theApp.InternalLoginHandler).Methods("GET", "POST")
-	theApp.Router.HandleFunc("/kmn-internal/notification", theApp.InternalNotificationSettingGetHandler).Methods("GET")
-	theApp.Router.HandleFunc("/kmn-internal/notification", theApp.InternalNotificationSettingPostHandler).Methods("POST")
-	theApp.Router.HandleFunc("/kmn-internal/logout", theApp.InternalLogoutHandler).Methods("POST")
+	Router = mux.NewRouter()
+	Router.HandleFunc("/", HomeHandler).Methods("GET")
+	Router.HandleFunc("/search", DisplayQueueHandler).Methods("GET")
+	Router.HandleFunc("/kmn-internal", InternalLoginHandler).Methods("GET", "POST")
+	Router.HandleFunc("/kmn-internal/notification", InternalNotificationSettingGetHandler).Methods("GET")
+	Router.HandleFunc("/kmn-internal/notification", InternalNotificationSettingPostHandler).Methods("POST")
+	Router.HandleFunc("/kmn-internal/logout", InternalLogoutHandler).Methods("POST")
 
-	theApp.Router.NotFoundHandler = http.HandlerFunc(theApp.NotFoundHandler)
+	Router.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 
 	fileserver := http.FileServer(neuteredFileSystem{http.Dir("static")})
-	theApp.Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fileserver))
+	Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fileserver))
 
 	// Template caching: parse templates here instead in request to avoid delay
-	theApp.TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
-	theApp.TemplateDisplay = template.Must(template.New("queue.html").Funcs(fns).ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
-	theApp.TemplateNoData = template.Must(template.ParseFiles("template/nodata.html", "template/_header.html"))
-	theApp.TemplateError = template.Must(template.ParseFiles("template/error404.html", "template/_header.html"))
+	TemplateHome = template.Must(template.ParseFiles("template/index.html", "template/_header.html"))
+	TemplateDisplay = template.Must(template.New("queue.html").Funcs(fns).ParseFiles("template/queue.html", "template/_header.html", "template/_footer.html"))
+	TemplateError = template.Must(template.ParseFiles("template/error.html", "template/_header.html"))
 
-	theApp.TemplateLogin = template.Must(template.ParseFiles("template/login.html"))
-	theApp.TemplateEditNotification = template.Must(template.ParseFiles("template/editnotification.html"))
+	TemplateLogin = template.Must(template.ParseFiles("template/login.html"))
+	TemplateEditNotification = template.Must(template.ParseFiles("template/editnotification.html"))
 
 	// Initialize notification database
-	theApp.notificationViper = viper.New()
-	theApp.notificationViper.SetConfigFile(notificationConfig)
-	theApp.notificationPolicy = bluemonday.UGCPolicy()
+	notificationViper = viper.New()
+	notificationViper.SetConfigFile(notificationConfig)
+	notificationPolicy = bluemonday.UGCPolicy()
+
+	// Set global default value of cookie expiry duration
+	loggedUserSession = sessions.NewCookieStore(AppConfig.PrimaryKey.Auth, AppConfig.PrimaryKey.Encrypt)
+	loggedUserSession.MaxAge(60 * 30) // 30 minute
 }
 
-func (theApp *App) Run(addr string) {
+func Run(addr string) {
 	server := &http.Server{
-		Handler: theApp.Router,
+		Handler: Router,
 		Addr:    ":" + addr,
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: 10 * time.Second,
 		ReadTimeout:  10 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
-	fmt.Println("Launched at localhost", server.Addr)
+	InfoLogger.Printf("app launched at localhost:%v\n", server.Addr)
 	if err := server.ListenAndServe(); err != nil {
 		panic(err.Error())
 	}
@@ -323,22 +189,22 @@ func validateID(id string) bool {
 	return validQueueExp.MatchString(id)
 }
 
-func (theApp *App) GetNotification(branchCode string, roomCode string) (string, string) {
-	theApp.notificationViper.ReadInConfig()
+func GetNotification(branchCode string, roomCode string) (string, string) {
+	notificationViper.ReadInConfig()
 	var key string
 
 	key = fmt.Sprintf("%s.branch", branchCode)
-	branch := theApp.notificationViper.GetString(key)
+	branch := notificationViper.GetString(key)
 
 	key = fmt.Sprintf("%s.%s", branchCode, roomCode)
-	room := theApp.notificationViper.GetString(key)
+	room := notificationViper.GetString(key)
 
 	return branch, room
 }
 
-func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	var branchCopy []BranchData
-	for _, branch := range theApp.Branches {
+	for _, branch := range AppConfig.Branches {
 		branchCopy = append(branchCopy, BranchData{
 			Name: branch.Name,
 			Code: branch.Code,
@@ -347,55 +213,60 @@ func (theApp *App) HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	payload := map[string]interface{}{
 		"Branches":  branchCopy,
-		"Processes": getProcess(),
+		"Processes": ProcessLibArr,
 	}
-	if err := theApp.TemplateHome.Execute(w, payload); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := TemplateHome.Execute(w, payload); err != nil {
+		ErrorLogger.Printf("fail to execute template for / endpoint. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
-func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
+func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to parse input from / endpoint. %v\n", err)
+		http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 		return
 	}
 
 	// Validate and sanitize branch
 	branch := r.FormValue("branch")
 	// fmt.Println(branch)
-	if valid := validateBranch(theApp.Branches, branch); !valid {
-		http.Error(w, "ERR: Invalid Branch selection", http.StatusBadRequest)
+	if valid := AppConfig.validateBranch(branch); !valid {
+		ErrorLogger.Printf("invalid branch selection. got: %v", branch)
+		http.Error(w, "input cabang tidak valid. silahkan coba lagi.", http.StatusBadRequest)
 		// [TODO] redirect to index/search
 		return
 	}
-	branchString, branchID := theApp.GetBranchInfo(branch)
+	branchName, branchID := AppConfig.getBranchInfo(branch)
 
 	// Validate and sanitize process
 	process := r.FormValue("process")
 	// fmt.Println(process)
 	if valid := validateProcess(process); !valid {
-		http.Error(w, "ERR: Invalid Process selection", http.StatusBadRequest)
+		ErrorLogger.Printf("invalid process selection. got: %v", process)
+		http.Error(w, "input proses tidak valid. silahkan coba lagi.", http.StatusBadRequest)
 		// [TODO] redirect to index/search
 		return
 	}
 
 	// Validate and sanitize queue number
-	fullId := r.FormValue("qinput1") + r.FormValue("qinput2") + r.FormValue("qinput3") + r.FormValue("qinput4")
-	fullId, _ = SanitizeID(fullId)
-	if valid := validateID(fullId); !valid {
-		http.Error(w, "ERR: Invalid Queue number", http.StatusBadRequest)
+	fullID := r.FormValue("qinput1") + r.FormValue("qinput2") + r.FormValue("qinput3") + r.FormValue("qinput4")
+	fullID, _ = SanitizeID(fullID)
+	if valid := validateID(fullID); !valid {
+		ErrorLogger.Printf("invalid queue number. got: %v", fullID)
+		http.Error(w, "input antrian tidak valid. silahkan coba lagi.", http.StatusBadRequest)
 		// [TODO] redirect to index/search
 		return
 	}
 
-	// [TODO] update database query based on actual database design
-	logs, err := GetQueueLogs(theApp.DB[branchID], fullId)
+	logs, err := GetQueueLogs(DB, branchID, fullID)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			theApp.NoDataTemplateDisplay(w, r, fullId)
+			NoDataTemplateDisplay(w, r, fullID, process)
 		default:
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			ErrorLogger.Printf("sql query failed. %v", err)
+			http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -404,50 +275,61 @@ func (theApp *App) DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	var roomDisplay []RoomDisplay = make([]RoomDisplay, 0)
 	switch process {
 	case "opr":
-		roomDisplay = theApp.ConstructRoomListBasedOnOrder(logs, process)
+		roomDisplay = ConstructRoomListBasedOnOrder(logs, process)
 	case "pol":
-		roomDisplay = theApp.ConstructRoomListBasedOnTime(logs, process)
+		roomDisplay = ConstructRoomListBasedOnTime(logs, process)
 	}
 
+	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
+	// Trying to modify the active with below method would crash
 	if len(roomDisplay) == 0 {
-		theApp.NoDataTemplateDisplay(w, r, fullId)
+		NoDataTemplateDisplay(w, r, fullID, process)
 		return
 	}
 
 	// Get notification
-	branchNotification, roomNotification := theApp.GetNotification(branch, r.FormValue("qinput1"))
+	branchNotification, roomNotification := GetNotification(branch, r.FormValue("qinput1"))
 
 	payload := map[string]interface{}{
-		"Branch":             branchString,
-		"Id":                 fullId,
+		"Branch":             branchName,
+		"Id":                 fullID,
 		"Rooms":              roomDisplay,
 		"BranchNotification": branchNotification,
 		"RoomNotification":   roomNotification,
 	}
 
 	// Render output
-	if err := theApp.TemplateDisplay.Execute(w, payload); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := TemplateDisplay.Execute(w, payload); err != nil {
+		ErrorLogger.Printf("fail to execute template for display. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
-func (theApp *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
-	if tmplErr := theApp.TemplateError.Execute(w, nil); tmplErr != nil {
-		http.Error(w, tmplErr.Error(), http.StatusInternalServerError)
+func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+
+	message := fmt.Sprintf("Halaman tidak ditemukan")
+
+	if err := TemplateError.Execute(w, message); err != nil {
+		ErrorLogger.Printf("fail to execute template for error. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
-func (theApp *App) NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id string) {
-	payload := map[string]interface{}{
-		"Id": id,
-	}
+func NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id, process string) {
+	w.WriteHeader(http.StatusOK) // for clarity
 
-	if err := theApp.TemplateNoData.Execute(w, payload); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	processName, _ := ProcessLibMap[process]
+
+	message := fmt.Sprintf("Data pasien %s untuk %s tidak tersedia", id, processName)
+
+	if err := TemplateError.Execute(w, message); err != nil {
+		ErrorLogger.Printf("fail to execute template for error. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
-func (theApp *App) ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomDisplay {
+func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomDisplay {
 	var roomDisplays []RoomDisplay
 
 	// Sort PatientLog array based on time
@@ -457,7 +339,7 @@ func (theApp *App) ConstructRoomListBasedOnTime(logs []PatientLog, processCode s
 
 	// Translate Room code into Room name, and populate array result
 	for _, log := range logs {
-		if roomMap, exist := theApp.RoomMap[processCode][log.Room]; exist {
+		if roomMap, exist := AppConfig.RoomMap[processCode][log.Group]; exist {
 			var rd = RoomDisplay{
 				Name:     roomMap.Name,
 				Time:     log.Time.Format("15:04:05"),
@@ -467,13 +349,17 @@ func (theApp *App) ConstructRoomListBasedOnTime(logs []PatientLog, processCode s
 		}
 	}
 
-	// Set last room as active room
-	roomDisplays[len(roomDisplays)-1].IsActive = true
+	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
+	// Trying to modify the active with below method would crash
+	if len(roomDisplays) > 0 {
+		// Set last room as active room
+		roomDisplays[len(roomDisplays)-1].IsActive = true
+	}
 
 	return roomDisplays
 }
 
-func (theApp *App) ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []RoomDisplay {
+func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []RoomDisplay {
 	var roomDisplays []RoomDisplay = make([]RoomDisplay, 0)
 
 	// Sort PatientLog array based on time
@@ -482,19 +368,19 @@ func (theApp *App) ConstructRoomListBasedOnOrder(logs []PatientLog, processCode 
 	})
 
 	// Remember last room data (closest to current time), would be set as active room later
-	activeRoom := logs[len(logs)-1].Room
+	activeRoom := logs[len(logs)-1].Group
 
-	n := len(theApp.RoomMap[processCode])
+	n := len(AppConfig.RoomMap[processCode])
 	for i := 0; i < n; i++ {
-		if code, exist := theApp.OrderedRoom[processCode][i]; exist {
+		if code, exist := AppConfig.OrderedRoom[processCode][i]; exist {
 			var rd = RoomDisplay{
-				Name:     theApp.RoomMap[processCode][code].Name,
+				Name:     AppConfig.RoomMap[processCode][code].Name,
 				Time:     "",
 				IsActive: code == activeRoom,
 			}
 
 			for _, log := range logs {
-				if log.Room == code {
+				if log.Group == code {
 					rd.Time = log.Time.Format("15:04:05")
 					break
 				}
@@ -509,11 +395,6 @@ func (theApp *App) ConstructRoomListBasedOnOrder(logs []PatientLog, processCode 
 
 //========================================================================//
 // ** Internal Pages Implementation **//
-type Credential struct {
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-}
-
 type RoomNotification struct {
 	Code         string
 	Name         string
@@ -521,34 +402,64 @@ type RoomNotification struct {
 }
 
 var (
-	creds             = []Credential{}
-	loggedUserSession = sessions.NewCookieStore([]byte("super-secret-key")) // [TODO] change
-
+	loggedUserSession  *sessions.CookieStore
 	notificationConfig = "./notification.json"
 )
 
-func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		// Serve login page
-		if err := theApp.TemplateLogin.Execute(w, nil); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// With .Get() method, if not found, it created a new session immediately. So it's never nil
+		session, _ := loggedUserSession.Get(r, "authenticated-user-session")
+
+		// validate cookie session! [TODO] check hash.. need to store the hash then
+
+		if session.IsNew {
+			// Either no session or session exist but can't be decoded. gorilla.sessions create a new one
+			err := session.Save(r, w) // save the session
+			if err != nil {
+				ErrorLogger.Printf("fail to save kmn-internal session. %v\n", err)
+				http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
+				return
+			} else {
+				// Serve login page
+				if err := TemplateLogin.Execute(w, nil); err != nil {
+					ErrorLogger.Printf("fail to execute template for login. %v\n", err)
+					http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
+					return
+				}
+			}
+		} else {
+			if CheckRequestSession(session) {
+				// Redirect to notification page immediately
+				url := r.URL.Path + "/notification"
+				http.Redirect(w, r, url, http.StatusSeeOther)
+			} else {
+				// Serve login page
+				if err := TemplateLogin.Execute(w, nil); err != nil {
+					ErrorLogger.Printf("fail to execute template for login. %v\n", err)
+					http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
+					return
+				}
+			}
 		}
 	} else if r.Method == "POST" {
+		if err := r.ParseForm(); err != nil {
+			ErrorLogger.Printf("fail to parse input from / endpoint. %v\n", err)
+			http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
+			return
+		}
+
 		// Evaluate login input
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 
 		auth := false
-		for _, cred := range creds {
-			if cred.Username == username {
-				err := bcrypt.CompareHashAndPassword([]byte(cred.Password), []byte(password))
+		for _, branch := range AppConfig.Branches {
+			if branch.Code == username {
+				err := bcrypt.CompareHashAndPassword([]byte(branch.Password), []byte(password))
 				if err != nil { // user found but password doesn't match
-					http.Error(w, "User and password combination doesn't match any records", http.StatusUnauthorized)
+					InfoLogger.Printf("No matching user-password combination. Inputted User: %v. Password: %v", username, password)
+					http.Error(w, "Kombinasi User and password tidak terdaftar.", http.StatusUnauthorized)
 					return
 				}
 
@@ -557,22 +468,22 @@ func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 		if !auth { // user not found
-			http.Error(w, "User and password combination doesnt match any records", http.StatusForbidden)
+			InfoLogger.Printf("No matching user-password combination. Inputted User: %v. Password: %v", username, password)
+			http.Error(w, "Kombinasi User and password tidak terdaftar.", http.StatusUnauthorized)
 			return
 		}
 
 		// Success
 		// Store session
 		session, _ := loggedUserSession.New(r, "authenticated-user-session")
-		session.Options = &sessions.Options{
-			MaxAge: 60 * 30, // 30 minute
-		}
 		session.Values["username"] = username
 		session.Values["authenticated"] = true
 		session.Values["changes-saved"] = false
 		err := session.Save(r, w)
 		if err != nil {
-			fmt.Println(err)
+			ErrorLogger.Printf("fail to save kmn-internal session. %v\n", err)
+			http.Error(w, "Fail to initialize session", http.StatusInternalServerError)
+			return
 		}
 
 		// Redirect to notification page
@@ -581,20 +492,30 @@ func (theApp *App) InternalLoginHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (theApp *App) InternalLogoutHandler(w http.ResponseWriter, r *http.Request) {
+func InternalLogoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
-	session.Values["authenticated"] = false
-	session.Values["changes-saved"] = false
+	session.Options.MaxAge = -1
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/kmn-internal", http.StatusSeeOther)
 }
 
-func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Request) {
+// Check if session is authenticated
+func CheckRequestSession(session *sessions.Session) bool {
+	auth, ok := session.Values["authenticated"]
+	if !session.IsNew && ok && auth.(bool) {
+		return true
+	} else {
+		return false
+	}
+}
+
+func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Request) {
 	// Reject unauthenticated access
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
-	if auth, ok := session.Values["authenticated"]; !ok || !auth.(bool) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+	if !CheckRequestSession(session) {
+		InfoLogger.Printf("unauthenticated access to kmn-internal page method GET. user: %v\n", session.Values["username"])
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -602,19 +523,19 @@ func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, 
 	// 1. Translate username, which is branch code, into branch name
 	branchCode := fmt.Sprintf("%v", session.Values["username"])
 	branchName := ""
-	for _, branchData := range theApp.Branches {
+	for _, branchData := range AppConfig.Branches {
 		if branchData.Code == branchCode {
 			branchName = branchData.Name
 		}
 	}
 	// 2. Get rooms in config.json and prepare controls for each one
-	oprRoomCount := len(theApp.RoomMap["opr"])
-	polRoomCount := len(theApp.RoomMap["pol"])
+	oprRoomCount := len(AppConfig.RoomMap["opr"])
+	polRoomCount := len(AppConfig.RoomMap["pol"])
 
 	oprRooms := make([]RoomNotification, 0)
 	for i := 0; i < oprRoomCount; i++ {
-		if code, exist := theApp.OrderedRoom["opr"][i]; exist {
-			roomData := theApp.RoomMap["opr"][code]
+		if code, exist := AppConfig.OrderedRoom["opr"][i]; exist {
+			roomData := AppConfig.RoomMap["opr"][code]
 
 			oprRooms = append(oprRooms, RoomNotification{
 				Name:         roomData.Name,
@@ -625,8 +546,8 @@ func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, 
 	}
 	polRooms := make([]RoomNotification, 0)
 	for i := 0; i < polRoomCount; i++ {
-		if code, exist := theApp.OrderedRoom["pol"][i]; exist {
-			roomData := theApp.RoomMap["pol"][code]
+		if code, exist := AppConfig.OrderedRoom["pol"][i]; exist {
+			roomData := AppConfig.RoomMap["pol"][code]
 
 			polRooms = append(polRooms, RoomNotification{
 				Name:         roomData.Name,
@@ -637,9 +558,9 @@ func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, 
 	}
 
 	// 3. Read existing notification text from config file
-	theApp.notificationViper.ReadInConfig()
+	notificationViper.ReadInConfig()
 	notification := make(map[string]string)
-	theApp.notificationViper.UnmarshalKey(branchCode, &notification)
+	notificationViper.UnmarshalKey(branchCode, &notification)
 	// Branch
 	branchNotification := ""
 	if text, exist := notification["branch"]; exist {
@@ -676,31 +597,34 @@ func (theApp *App) InternalNotificationSettingGetHandler(w http.ResponseWriter, 
 	session.Values["changes-saved"] = false
 	session.Save(r, w)
 
-	if err := theApp.TemplateEditNotification.Execute(w, payload); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := TemplateEditNotification.Execute(w, payload); err != nil {
+		ErrorLogger.Printf("fail to execute template for edit notification. %v\n", err)
+		http.Error(w, "halaman gagal dimuat. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 	}
 }
 
-func (theApp *App) SanitizeNotificationInput(text string) string {
+func SanitizeNotificationInput(text string) string {
 	// Strip malicious html markup
-	cleanHTML := theApp.notificationPolicy.Sanitize(text)
+	cleanHTML := notificationPolicy.Sanitize(text)
 	// Escape all html markup
 	noMarkUpHTML := html.EscapeString(cleanHTML)
 
 	return noMarkUpHTML
 }
 
-func (theApp *App) InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Request) {
+func InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Request) {
 	// Reject unauthenticated access
 	session, _ := loggedUserSession.Get(r, "authenticated-user-session")
-	if auth, ok := session.Values["authenticated"]; !ok || !auth.(bool) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+	if !CheckRequestSession(session) {
+		InfoLogger.Printf("unauthenticated access to kmn-internal page method POST. user: %v\n", session.Values["username"])
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	branchCode := fmt.Sprintf("%v", session.Values["username"])
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ErrorLogger.Printf("fail to parse input from / endpoint. %v\n", err)
+		http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 		return
 	}
 
@@ -709,41 +633,41 @@ func (theApp *App) InternalNotificationSettingPostHandler(w http.ResponseWriter,
 	branchNotificationRaw := r.FormValue("branch")
 	key = fmt.Sprintf("%s.branch", branchCode)
 	// Sanitize input
-	branchNotification := theApp.notificationPolicy.Sanitize(branchNotificationRaw)
-	theApp.notificationViper.Set(key, branchNotification)
+	branchNotification := notificationPolicy.Sanitize(branchNotificationRaw)
+	notificationViper.Set(key, branchNotification)
 
 	// Because we create control based on RoomMap, then we can assume the control exist with our defined ID (room code)
-	oprRoomCount := len(theApp.RoomMap["opr"])
-	polRoomCount := len(theApp.RoomMap["pol"])
+	oprRoomCount := len(AppConfig.RoomMap["opr"])
+	polRoomCount := len(AppConfig.RoomMap["pol"])
 
 	// Get and sanitize all input
 	for i := 0; i < oprRoomCount; i++ {
-		if code, exist := theApp.OrderedRoom["opr"][i]; exist {
-			roomData := theApp.RoomMap["opr"][code]
+		if code, exist := AppConfig.OrderedRoom["opr"][i]; exist {
+			roomData := AppConfig.RoomMap["opr"][code]
 
 			// Sanitize input
-			notification := theApp.SanitizeNotificationInput(r.FormValue(roomData.Code))
+			notification := SanitizeNotificationInput(r.FormValue(roomData.Code))
 
 			// Set config value in memory with Viper
 			key = fmt.Sprintf("%s.%s", branchCode, roomData.Code)
-			theApp.notificationViper.Set(key, notification)
+			notificationViper.Set(key, notification)
 		}
 	}
 	for i := 0; i < polRoomCount; i++ {
-		if code, exist := theApp.OrderedRoom["pol"][i]; exist {
-			roomData := theApp.RoomMap["pol"][code]
+		if code, exist := AppConfig.OrderedRoom["pol"][i]; exist {
+			roomData := AppConfig.RoomMap["pol"][code]
 
 			// Sanitize input
-			notification := theApp.SanitizeNotificationInput(r.FormValue(roomData.Code))
+			notification := SanitizeNotificationInput(r.FormValue(roomData.Code))
 
 			// Set config value in memory with Viper
 			key = fmt.Sprintf("%s.%s", branchCode, roomData.Code)
-			theApp.notificationViper.Set(key, notification)
+			notificationViper.Set(key, notification)
 		}
 	}
 
 	// Overwrite config file
-	theApp.notificationViper.WriteConfig()
+	notificationViper.WriteConfig()
 
 	// Redirect back to notification page
 	session.Values["changes-saved"] = true

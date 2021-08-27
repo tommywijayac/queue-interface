@@ -60,3 +60,18 @@ function QueueNumberInput() {
     }
 }
 QueueNumberInput();
+
+function updateProcess() {
+    var e = document.getElementById("branch");
+    var selectedBranch = e.value;
+
+    switch (selectedBranch){
+        case 'kbj':
+        case 'jsl':
+        case 'kmy':
+            document.getElementById("opr").classList.remove("disabled");
+            break;
+        default:
+            document.getElementById("opr").classList.add("disabled");
+    }
+}

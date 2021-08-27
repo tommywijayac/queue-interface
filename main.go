@@ -1,23 +1,33 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 )
 
-func init() {
-	fmt.Println("Hello from main init!")
-}
+var (
+	AppConfig Config
+
+	// Tools
+	InfoLogger  *log.Logger
+	ErrorLogger *log.Logger
+)
 
 func main() {
-	theApp := App{}
-	theApp.ReadConfig()
-	theApp.Initialize()
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		fmt.Println("Port set to default")
-		port = "8080"
+	// Initialize logger
+	file, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal("Fail to initialize logger!")
 	}
-	theApp.Run(port)
+	InfoLogger = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	ErrorLogger = log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	// Read config (static values)
+	AppConfig.readConfig()
+
+	// Initialize handler, database, and several other tools
+	Initialize()
+
+	// Starting the app
+	Run(AppConfig.Port)
 }
