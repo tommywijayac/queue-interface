@@ -39,7 +39,6 @@
                 }, {
                     "name": "Ruang Tindakan",
                     "code": "SD",
-                    "group-code": "GY",
                     "order": 1
                 }, {
                     "name": "Ruang Pemulihan",
