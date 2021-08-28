@@ -343,9 +343,9 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 		// Standardize key: lowercase
 		log.Group = strings.ToLower(log.Group)
 
-		if roomMap, exist := AppConfig.RoomMap[processCode][log.Group]; exist {
+		if room, exist := AppConfig.RoomMap[processCode][log.Group]; exist {
 			var rd = RoomDisplay{
-				Name:     roomMap.Name,
+				Name:     room.Name,
 				Time:     log.Time.Format("15:04:05"),
 				IsActive: false,
 			}
