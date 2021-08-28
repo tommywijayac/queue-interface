@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -15,9 +16,10 @@ type SessionKey struct {
 }
 
 type RoomData struct {
-	Name  string `mapstructure:"name"`
-	Code  string `mapstructure:"code"`
-	Order int    `mapstructure:"order"`
+	Name      string   `mapstructure:"name"`
+	GroupCode string   `mapstructure:"group-code"`
+	Code      []string `mapstructure:"code"`
+	Order     int      `mapstructure:"order"`
 }
 
 type BranchData struct {
@@ -29,9 +31,8 @@ type BranchData struct {
 
 type Config struct {
 	Branches []BranchData
-
-	RoomMap     map[string]map[string]RoomData //process code -> room code -> room data
-	OrderedRoom map[string]map[int]string      //process code -> room order -> room code
+	Rooms    map[string][]RoomData
+	RoomMap  map[string]map[string]*RoomData //process code -> room code
 
 	DatabaseAddr string
 	DatabaseUser string
@@ -78,13 +79,10 @@ func (cfg *Config) readConfig() {
 	}
 
 	// Read room configuration
-	cfg.RoomMap = make(map[string]map[string]RoomData)
-	cfg.RoomMap["opr"] = make(map[string]RoomData)
-	cfg.RoomMap["pol"] = make(map[string]RoomData)
-
-	cfg.OrderedRoom = make(map[string]map[int]string)
-	cfg.OrderedRoom["opr"] = make(map[int]string)
-	cfg.OrderedRoom["pol"] = make(map[int]string)
+	cfg.Rooms = make(map[string][]RoomData)
+	cfg.RoomMap = make(map[string]map[string]*RoomData)
+	cfg.RoomMap["opr"] = make(map[string]*RoomData)
+	cfg.RoomMap["pol"] = make(map[string]*RoomData)
 
 	cfg.readRoomConfig("opr")
 	cfg.readRoomConfig("pol")
@@ -134,18 +132,42 @@ func (cfg *Config) readRoomConfig(process string) {
 		ErrorLogger.Fatalln("missing room list defined in config (possible corrupted or excessive prune).")
 	}
 
-	// Map room. We can't directly marshal to map because we add hard-coded limitation with trimming
-	// which is easier done in slice
-	collision := 1
-	for i := 0; i < len(rooms); i++ {
-		cfg.RoomMap[process][rooms[i].Code] = rooms[i]
+	// Save to persisted vars
+	cfg.Rooms[process] = make([]RoomData, len(rooms))
+	copy(cfg.Rooms[process], rooms)
 
-		if _, exist := cfg.OrderedRoom[process][rooms[i].Order]; !exist {
-			cfg.OrderedRoom[process][rooms[i].Order] = rooms[i].Code
-		} else {
-			cfg.OrderedRoom[process][rooms[i].Order+collision] = rooms[i].Code
-			collision++
+	// cfg.mapRoom(rooms)
+	switch process {
+	case "opr":
+		cfg.mapOprRoom(cfg.Rooms[process])
+	case "pol":
+		cfg.mapRoom(cfg.Rooms[process])
+	}
+}
+
+func (cfg *Config) mapOprRoom(rooms []RoomData) {
+	// 27/08/2021: Because of KMN specs that the OPR flow all has same group-code,
+	// Then we need to use room-code instead to differentiate, and put them as KEY for OPR flow
+
+	process := "opr"
+	for i := 0; i < len(rooms); i++ {
+		// Map each room code. This will be used for matching
+		for _, room_code := range rooms[i].Code {
+			// Standardize key: lowercase
+			room_code = strings.ToLower(room_code)
+
+			cfg.RoomMap[process][room_code] = &rooms[i]
 		}
+	}
+}
+
+func (cfg *Config) mapRoom(rooms []RoomData) {
+	process := "pol"
+	for i := 0; i < len(rooms); i++ {
+		// Standardize key: lowercase
+		group_code := strings.ToLower(rooms[i].GroupCode)
+
+		cfg.RoomMap[process][group_code] = &rooms[i]
 	}
 }
 
