@@ -30,6 +30,8 @@ type BranchData struct {
 }
 
 type Config struct {
+	IsDev bool
+
 	Branches []BranchData
 	Rooms    map[string][]RoomData
 	RoomMap  map[string]map[string]*RoomData //process code -> room code
@@ -50,6 +52,8 @@ func (cfg *Config) readConfig() {
 	if err != nil {
 		ErrorLogger.Fatalf("fail to open config.env. %v\n", err)
 	}
+
+	AppConfig.IsDev = viper.GetBool("ISDEV") //default value (if key not exist) is false
 
 	readEnvByteConfig("PRIMARY_SESSION_KEY_AUTH", &cfg.PrimaryKey.Auth, []byte("super-secret-key-auth-first"))
 	readEnvByteConfig("PRIMARY_SESSION_KEY_ENCRYPT", &cfg.PrimaryKey.Encrypt, []byte("super-secret-key-encrypt-first"))
