@@ -34,15 +34,18 @@
             "room" : [
                 {
                     "name": "Ruang Persiapan Tindakan",
-                    "code": "SD",
+                    "group-code": "SD-PREOP",
+                    "code": ["PREOP", "PREO"],
                     "order": 0
                 }, {
                     "name": "Ruang Tindakan",
-                    "code": "SD",
+                    "group-code": "SD-OT",
+                    "code": ["OT1", "OT2", "OT3", "OT4"],
                     "order": 1
                 }, {
                     "name": "Ruang Pemulihan",
-                    "code": "SD",
+                    "group-code": "SD-POSTOP",
+                    "code": ["LAS", "RECOP", "POSO"],
                     "order": 2
                 }
             ]
@@ -52,34 +55,34 @@
             "room": [
                 { 
                     "name": "Registrasi",
-                    "code": "REG"
+                    "group-code": "REG"
                 }, {
                     "name": "Rekam Medik",
-                    "code": "RM"
+                    "group-code": "RM"
                 }, {
                     "name": "Pemeriksaan Awal",
-                    "code": "PA"
+                    "group-code": "PA"
                 } , {
                     "name": "Refraksi",
-                    "code": "REF"
+                    "group-code": "REF"
                 } , {
                     "name": "Ruang Konsul",
-                    "code": "POLI"
+                    "group-code": "POLI"
                 } , {
                     "name": "",
-                    "code": ""
+                    "group-code": ""
                 } , {
                     "name": "",
-                    "code": ""
+                    "group-code": ""
                 } , {
                     "name": "",
-                    "code": ""
+                    "group-code": ""
                 } , {
                     "name": "",
-                    "code": ""
+                    "group-code": ""
                 } , {
                     "name": "",
-                    "code": ""
+                    "group-code": ""
                 }        
             ]
         }

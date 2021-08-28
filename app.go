@@ -340,6 +340,9 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 
 	// Translate Room code into Room name, and populate array result
 	for _, log := range logs {
+		// Standardize key: lowercase
+		log.Group = strings.ToLower(log.Group)
+
 		if roomMap, exist := AppConfig.RoomMap[processCode][log.Group]; exist {
 			var rd = RoomDisplay{
 				Name:     roomMap.Name,
@@ -362,33 +365,42 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 
 func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []RoomDisplay {
 	var roomDisplays []RoomDisplay = make([]RoomDisplay, 0)
+	for _, room := range AppConfig.Rooms[processCode] {
+		roomDisplays = append(roomDisplays, RoomDisplay{
+			Name:     room.Name,
+			Time:     "-",
+			IsActive: false,
+		})
+	}
+	n := len(roomDisplays)
 
 	// Sort PatientLog array based on time
 	sort.Slice(logs, func(i, j int) bool {
 		return logs[i].Time.Before(logs[j].Time)
 	})
 
-	// Remember last room data (closest to current time), would be set as active room later
-	activeRoom := logs[len(logs)-1].Group
+	// Iterate log and find matching room (NOT group!)
+	latest := -1
+	for _, log := range logs {
+		// Standardize key: lowercase
+		log.Room = strings.ToLower(log.Room)
 
-	n := len(AppConfig.RoomMap[processCode])
-	for i := 0; i < n; i++ {
-		if code, exist := AppConfig.OrderedRoom[processCode][i]; exist {
-			var rd = RoomDisplay{
-				Name:     AppConfig.RoomMap[processCode][code].Name,
-				Time:     "",
-				IsActive: code == activeRoom,
-			}
+		if room, exist := AppConfig.RoomMap[processCode][log.Room]; exist {
+			// Prevent panicking due invalid index
+			if room.Order >= 0 && room.Order < n {
+				roomDisplays[room.Order].Time = log.Time.Format("15:04:05")
 
-			for _, log := range logs {
-				if log.Group == code {
-					rd.Time = log.Time.Format("15:04:05")
-					break
+				if room.Order > latest {
+					latest = room.Order
 				}
 			}
-
-			roomDisplays = append(roomDisplays, rd)
 		}
+	}
+
+	// Determine where the patient is (active room) based on last not 'nil' room in order (NOT time)
+	// scenario: (x) A -> (.) B (turns out the nurse forget to scan at A, which then she did after scan on B)
+	if latest != -1 {
+		roomDisplays[latest].IsActive = true
 	}
 
 	return roomDisplays
@@ -530,32 +542,21 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	// 2. Get rooms in config.json and prepare controls for each one
-	oprRoomCount := len(AppConfig.RoomMap["opr"])
-	polRoomCount := len(AppConfig.RoomMap["pol"])
-
 	oprRooms := make([]RoomNotification, 0)
-	for i := 0; i < oprRoomCount; i++ {
-		if code, exist := AppConfig.OrderedRoom["opr"][i]; exist {
-			roomData := AppConfig.RoomMap["opr"][code]
-
-			oprRooms = append(oprRooms, RoomNotification{
-				Name:         roomData.Name,
-				Code:         roomData.Code,
-				Notification: "",
-			})
-		}
+	for _, room := range AppConfig.Rooms["opr"] {
+		oprRooms = append(oprRooms, RoomNotification{
+			Name:         room.Name,
+			Code:         room.GroupCode,
+			Notification: "",
+		})
 	}
 	polRooms := make([]RoomNotification, 0)
-	for i := 0; i < polRoomCount; i++ {
-		if code, exist := AppConfig.OrderedRoom["pol"][i]; exist {
-			roomData := AppConfig.RoomMap["pol"][code]
-
-			polRooms = append(polRooms, RoomNotification{
-				Name:         roomData.Name,
-				Code:         roomData.Code,
-				Notification: "",
-			})
-		}
+	for _, room := range AppConfig.Rooms["pol"] {
+		polRooms = append(polRooms, RoomNotification{
+			Name:         room.Name,
+			Code:         room.GroupCode,
+			Notification: "",
+		})
 	}
 
 	// 3. Read existing notification text from config file
@@ -567,8 +568,9 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 	if text, exist := notification["branch"]; exist {
 		branchNotification = text
 	}
+
 	// Opr Rooms
-	for i := 0; i < oprRoomCount; i++ {
+	for i := 0; i < len(oprRooms); i++ {
 		// Because branch code entry are capital, but json key is always lowercase
 		code := strings.ToLower(oprRooms[i].Code)
 
@@ -577,7 +579,7 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	// Pol Rooms
-	for i := 0; i < polRoomCount; i++ {
+	for i := 0; i < len(polRooms); i++ {
 		// Because branch code entry are capital, but json key is always lowercase
 		code := strings.ToLower(polRooms[i].Code)
 
@@ -638,33 +640,22 @@ func InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Reque
 	notificationViper.Set(key, branchNotification)
 
 	// Because we create control based on RoomMap, then we can assume the control exist with our defined ID (room code)
-	oprRoomCount := len(AppConfig.RoomMap["opr"])
-	polRoomCount := len(AppConfig.RoomMap["pol"])
-
 	// Get and sanitize all input
-	for i := 0; i < oprRoomCount; i++ {
-		if code, exist := AppConfig.OrderedRoom["opr"][i]; exist {
-			roomData := AppConfig.RoomMap["opr"][code]
+	for _, room := range AppConfig.Rooms["opr"] {
+		// Sanitize input
+		notification := SanitizeNotificationInput(r.FormValue(room.GroupCode))
 
-			// Sanitize input
-			notification := SanitizeNotificationInput(r.FormValue(roomData.Code))
-
-			// Set config value in memory with Viper
-			key = fmt.Sprintf("%s.%s", branchCode, roomData.Code)
-			notificationViper.Set(key, notification)
-		}
+		// Set config value in memory with Viper
+		key = fmt.Sprintf("%s.%s", branchCode, room.GroupCode)
+		notificationViper.Set(key, notification)
 	}
-	for i := 0; i < polRoomCount; i++ {
-		if code, exist := AppConfig.OrderedRoom["pol"][i]; exist {
-			roomData := AppConfig.RoomMap["pol"][code]
+	for _, room := range AppConfig.Rooms["pol"] {
+		// Sanitize input
+		notification := SanitizeNotificationInput(r.FormValue(room.GroupCode))
 
-			// Sanitize input
-			notification := SanitizeNotificationInput(r.FormValue(roomData.Code))
-
-			// Set config value in memory with Viper
-			key = fmt.Sprintf("%s.%s", branchCode, roomData.Code)
-			notificationViper.Set(key, notification)
-		}
+		// Set config value in memory with Viper
+		key = fmt.Sprintf("%s.%s", branchCode, room.GroupCode)
+		notificationViper.Set(key, notification)
 	}
 
 	// Overwrite config file
