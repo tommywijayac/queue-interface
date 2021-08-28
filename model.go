@@ -21,10 +21,12 @@ func (t RawTime) Time() (time.Time, error) {
 }
 
 func GetQueueLogs(db *sql.DB, branchID, patientID string) ([]PatientLog, error) {
-	// Testing purpose: use static date so we dont need to modify sql everyday
-	// [TODO] production must use dynamic time
-	//var date = time.Now().Format("2006-01-02")
-	date := "2021-08-24"
+	var date string
+	if AppConfig.IsDev {
+		date = "2021-08-24"
+	} else {
+		date = time.Now().Format("2006-01-02") //YYYY-MM-DD
+	}
 
 	// Read data from database
 	rows, err := db.Query("SELECT kelompok, ruang, jam FROM antri WHERE (lokasi=? AND nomor=? AND tanggal=? AND status=?) ORDER BY jam", branchID, patientID, date, "I")
