@@ -290,11 +290,14 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
-	// Trying to modify the active with below method would crash
 	if len(roomDisplay) == 0 {
 		NoDataTemplateDisplay(w, r, fullID, process)
 		return
 	}
+
+	// Determine to draw "selesai" part
+	// showFinish, activeFinish := IsRoomDisplayConsistFinish(roomDisplay, process)
+	showFinish, activeFinish := false, false
 
 	// Get notification
 	branchNotification, roomNotification := GetNotification(branch, r.FormValue("qinput1"))
@@ -303,6 +306,8 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		"Branch":             branchName,
 		"Id":                 fullID,
 		"Rooms":              roomDisplay,
+		"ShowFinish":         showFinish,
+		"ActivateFinish":     activeFinish,
 		"LastUpdated":        time.Now().Format("2006-01-02 15:04:05"),
 		"BranchNotification": branchNotification,
 		"RoomNotification":   roomNotification,
@@ -429,6 +434,32 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 	}
 
 	return roomDisplays
+}
+
+func IsRoomDisplayConsistFinish(rd []RoomDisplay, process string) (bool, bool) {
+	// if opr, always draw selesai: if reach finish active, else inactive
+	// if pol, draw selesai if reach finish, else not drawn
+	display, active := false, false
+
+	switch process {
+	case "opr":
+		// In OPR, "selesai" is always displayed but grayed out
+		display = true
+		// When patient reach the pre-determined last room, then it became highlighted
+		// For OPR, last room is always last room in array (it's static)
+		if rd[len(rd)-1].IsActive {
+			active = true
+		}
+	case "pol":
+		// In POL, "selesai" is displayed & highlighted
+		// when patient reach the pre-determined last room
+		// For POL, last room is always the active one
+		if rd[len(rd)-1].Name == "Kasir" {
+			display, active = true, true
+		}
+	}
+
+	return display, active
 }
 
 //========================================================================//
