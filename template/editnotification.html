@@ -65,81 +65,81 @@
 
             <button type="submit" class="btn btn-primary" id="save">Simpan</button>
             <button type="submit" class="btn btn-link ml-3" formaction="logout">Logout</button>
-        </form>
 
-        <script>
-            $("div[name='queue-notif-row']").each(function () {
-                var btn = $(this).find(":button"); // remove button
-                btn.on('click', function () {
-                    $(this).closest("div[name='queue-notif-row']").remove();
-                });
-            });
-
-            $("#addRow").click(function () {
-                var html = '';
-                html += '<div name="queue-notif-row">';
-                html += '   <div class="input-group mb-3">';
-                html += '        <select class="form-select">';
-                html += '            {{ range $code := $ValidQueueCodeList }}';
-                html += '                <option value="{{ $code }}" {{ if eq $code "A" }} selected {{ end }}>{{ $code }}</option>';
-                html += '            {{ end }}';
-                html += '       </select>';
-                html += '       <input type="text" class="form-control" placeholder="Tulis pesan antrian" autocomplete="off">';
-                html += '       <div class="input-group-append">';
-                html += '           <button type="button" class="btn btn-danger">Remove</button>';
-                html += '       </div>';
-                html += '   </div>';
-                html += '</div>';
-
-                $('#newRow').append(html);
-            });
-
-            $("form").on('click', '#save', function (e) {
-                e.preventDefault();
-
-                var payload = [];
-                var codeAppended = [];
-                
-                payload.push({
-                    "Code": "branch",
-                    "Text": $("#branch").val(),
+            <!-- Local Javascript. Put after HTML as it modifies HTML elements -->
+            <script>
+                $("div[name='queue-notif-row']").each(function () {
+                    var btn = $(this).find(":button"); // remove button
+                    btn.on('click', function () {
+                        $(this).closest("div[name='queue-notif-row']").remove();
+                    });
                 });
 
-                var valid = true;
-                $("div[name='queue-notif-row']").each(function() {
-                    var code = $(this).find(".form-select").val();
+                $("#addRow").click(function () {
+                    var html = '';
+                    html += '<div name="queue-notif-row">';
+                    html += '   <div class="input-group mb-3">';
+                    html += '        <select class="form-select">';
+                    html += '            {{ range $code := $ValidQueueCodeList }}';
+                    html += '                <option value="{{ $code }}" {{ if eq $code "A" }} selected {{ end }}>{{ $code }}</option>';
+                    html += '            {{ end }}';
+                    html += '       </select>';
+                    html += '       <input type="text" class="form-control" placeholder="Tulis pesan antrian" autocomplete="off">';
+                    html += '       <div class="input-group-append">';
+                    html += '           <button type="button" class="btn btn-danger">Remove</button>';
+                    html += '       </div>';
+                    html += '   </div>';
+                    html += '</div>';
 
-                    if (codeAppended.includes(code)) {
-                        alert("Ditemukan beberapa pesan untuk antrian yang sama! Gagal untuk menyimpan")
-                        valid = false;
+                    $('#newRow').append(html);
+                });
+
+                $("form").on('click', '#save', function (e) {
+                    e.preventDefault();
+
+                    var payload = [];
+                    var codeAppended = [];
+                    
+                    payload.push({
+                        "Code": "branch",
+                        "Text": $("#branch").val(),
+                    });
+
+                    var valid = true;
+                    $("div[name='queue-notif-row']").each(function() {
+                        var code = $(this).find(".form-select").val();
+
+                        if (codeAppended.includes(code)) {
+                            alert("Ditemukan beberapa pesan untuk antrian yang sama! Gagal untuk menyimpan")
+                            valid = false;
+                            return;
+                        }
+
+                        payload.push({
+                            "Code": code,
+                            "Text": $(this).find("input").val(),
+                        });
+                        codeAppended.push(code)
+                    });
+
+                    if (!valid) {
                         return;
                     }
 
-                    payload.push({
-                        "Code": code,
-                        "Text": $(this).find("input").val(),
-                    });
-                    codeAppended.push(code)
-                });
-
-                if (!valid) {
-                    return;
-                }
-
-                $.ajax({
-                    url: window.location.href,
-                    method: "POST",
-                    data: JSON.stringify(payload),
-                    success: function(response) {
-                        if (response.success) {
-                            $("#save-success").removeClass("invisible").addClass("visible");
+                    $.ajax({
+                        url: window.location.href,
+                        method: "POST",
+                        data: JSON.stringify(payload),
+                        success: function(response) {
+                            if (response.success) {
+                                $("#save-success").removeClass("invisible").addClass("visible");
+                            }
                         }
-                    }
-                }).catch(function (e) {
-                    console.log("ERROR: " + a.responseText);
+                    }).catch(function (e) {
+                        console.log("ERROR: " + a.responseText);
+                    });
                 });
-            });
-
-        </script>
+            </script>
+        </form>
     </body>
 </html>
