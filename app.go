@@ -348,17 +348,22 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 	})
 
 	// Translate Room code into Room name, and populate array result
+	added := map[string]bool{}
 	for _, log := range logs {
 		// Standardize key: lowercase
 		log.Group = strings.ToLower(log.Group)
+		if room, valid := AppConfig.RoomMap[processCode][log.Group]; valid {
+			// Display first log occurence data
+			if exist := added[log.Group]; !exist {
+				var rd = RoomDisplay{
+					Name:     room.Name,
+					Time:     log.Time.Format("15:04:05"),
+					IsActive: false,
+				}
+				roomDisplays = append(roomDisplays, rd)
 
-		if room, exist := AppConfig.RoomMap[processCode][log.Group]; exist {
-			var rd = RoomDisplay{
-				Name:     room.Name,
-				Time:     log.Time.Format("15:04:05"),
-				IsActive: false,
+				added[log.Group] = true
 			}
-			roomDisplays = append(roomDisplays, rd)
 		}
 	}
 
@@ -373,11 +378,13 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 }
 
 func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []RoomDisplay {
+	defaultTimeTxt := "-"
+
 	var roomDisplays []RoomDisplay = make([]RoomDisplay, 0)
 	for _, room := range AppConfig.Rooms[processCode] {
 		roomDisplays = append(roomDisplays, RoomDisplay{
 			Name:     room.Name,
-			Time:     "-",
+			Time:     defaultTimeTxt,
 			IsActive: false,
 		})
 	}
@@ -390,14 +397,22 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 
 	// Iterate log and find matching room (NOT group!)
 	latest := -1
+	added := map[int]bool{}
 	for _, log := range logs {
 		// Standardize key: lowercase
 		log.Room = strings.ToLower(log.Room)
 
-		if room, exist := AppConfig.RoomMap[processCode][log.Room]; exist {
+		if room, valid := AppConfig.RoomMap[processCode][log.Room]; valid {
 			// Prevent panicking due invalid index
-			if room.Order >= 0 && room.Order < n {
+			if room.Order < 0 && room.Order >= n {
+				continue
+			}
+
+			// Display first log occurence data
+			if exist := added[room.Order]; !exist {
 				roomDisplays[room.Order].Time = log.Time.Format("15:04:05")
+
+				added[room.Order] = true
 
 				if room.Order > latest {
 					latest = room.Order
@@ -408,6 +423,7 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 
 	// Determine where the patient is (active room) based on last not 'nil' room in order (NOT time)
 	// scenario: (x) A -> (.) B (turns out the nurse forget to scan at A, which then she did after scan on B)
+	// in above case, if ordered by time, then A would be highlighted. should be B
 	if latest != -1 {
 		roomDisplays[latest].IsActive = true
 	}
