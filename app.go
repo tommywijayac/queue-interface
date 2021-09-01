@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
@@ -41,6 +42,10 @@ var (
 			Code: "pol",
 			Name: "Poli / Rawat Jalan",
 		},
+	}
+
+	ValidQueueCodeList = []string{
+		"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
 	}
 )
 
@@ -189,15 +194,19 @@ func validateID(id string) bool {
 	return validQueueExp.MatchString(id)
 }
 
-func GetNotification(branchCode string, roomCode string) (string, string) {
+func GetNotification(branchCode string, queueCode string) (string, string) {
 	notificationViper.ReadInConfig()
-	var key string
+	notifications := []Notification{}
+	notificationViper.UnmarshalKey(branchCode, &notifications)
 
-	key = fmt.Sprintf("%s.branch", branchCode)
-	branch := notificationViper.GetString(key)
-
-	key = fmt.Sprintf("%s.%s", branchCode, roomCode)
-	room := notificationViper.GetString(key)
+	var branch, room string = "", ""
+	for _, n := range notifications {
+		if n.Code == "branch" {
+			branch = n.Text
+		} else if n.Code == queueCode {
+			room = n.Text
+		}
+	}
 
 	return branch, room
 }
@@ -281,11 +290,14 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
-	// Trying to modify the active with below method would crash
 	if len(roomDisplay) == 0 {
 		NoDataTemplateDisplay(w, r, fullID, process)
 		return
 	}
+
+	// Determine to draw "selesai" part
+	// showFinish, activeFinish := IsRoomDisplayConsistFinish(roomDisplay, process)
+	showFinish, activeFinish := false, false
 
 	// Get notification
 	branchNotification, roomNotification := GetNotification(branch, r.FormValue("qinput1"))
@@ -294,6 +306,8 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		"Branch":             branchName,
 		"Id":                 fullID,
 		"Rooms":              roomDisplay,
+		"ShowFinish":         showFinish,
+		"ActivateFinish":     activeFinish,
 		"LastUpdated":        time.Now().Format("2006-01-02 15:04:05"),
 		"BranchNotification": branchNotification,
 		"RoomNotification":   roomNotification,
@@ -339,17 +353,22 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 	})
 
 	// Translate Room code into Room name, and populate array result
+	added := map[string]bool{}
 	for _, log := range logs {
 		// Standardize key: lowercase
 		log.Group = strings.ToLower(log.Group)
+		if room, valid := AppConfig.RoomMap[processCode][log.Group]; valid {
+			// Display first log occurence data
+			if exist := added[log.Group]; !exist {
+				var rd = RoomDisplay{
+					Name:     room.Name,
+					Time:     log.Time.Format("15:04:05"),
+					IsActive: false,
+				}
+				roomDisplays = append(roomDisplays, rd)
 
-		if room, exist := AppConfig.RoomMap[processCode][log.Group]; exist {
-			var rd = RoomDisplay{
-				Name:     room.Name,
-				Time:     log.Time.Format("15:04:05"),
-				IsActive: false,
+				added[log.Group] = true
 			}
-			roomDisplays = append(roomDisplays, rd)
 		}
 	}
 
@@ -364,11 +383,13 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 }
 
 func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []RoomDisplay {
+	defaultTimeTxt := "-"
+
 	var roomDisplays []RoomDisplay = make([]RoomDisplay, 0)
 	for _, room := range AppConfig.Rooms[processCode] {
 		roomDisplays = append(roomDisplays, RoomDisplay{
 			Name:     room.Name,
-			Time:     "-",
+			Time:     defaultTimeTxt,
 			IsActive: false,
 		})
 	}
@@ -381,14 +402,22 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 
 	// Iterate log and find matching room (NOT group!)
 	latest := -1
+	added := map[int]bool{}
 	for _, log := range logs {
 		// Standardize key: lowercase
 		log.Room = strings.ToLower(log.Room)
 
-		if room, exist := AppConfig.RoomMap[processCode][log.Room]; exist {
+		if room, valid := AppConfig.RoomMap[processCode][log.Room]; valid {
 			// Prevent panicking due invalid index
-			if room.Order >= 0 && room.Order < n {
+			if room.Order < 0 && room.Order >= n {
+				continue
+			}
+
+			// Display first log occurence data
+			if exist := added[room.Order]; !exist {
 				roomDisplays[room.Order].Time = log.Time.Format("15:04:05")
+
+				added[room.Order] = true
 
 				if room.Order > latest {
 					latest = room.Order
@@ -399,6 +428,7 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 
 	// Determine where the patient is (active room) based on last not 'nil' room in order (NOT time)
 	// scenario: (x) A -> (.) B (turns out the nurse forget to scan at A, which then she did after scan on B)
+	// in above case, if ordered by time, then A would be highlighted. should be B
 	if latest != -1 {
 		roomDisplays[latest].IsActive = true
 	}
@@ -406,18 +436,43 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 	return roomDisplays
 }
 
-//========================================================================//
-// ** Internal Pages Implementation **//
-type RoomNotification struct {
-	Code         string
-	Name         string
-	Notification string
+func IsRoomDisplayConsistFinish(rd []RoomDisplay, process string) (bool, bool) {
+	// if opr, always draw selesai: if reach finish active, else inactive
+	// if pol, draw selesai if reach finish, else not drawn
+	display, active := false, false
+
+	switch process {
+	case "opr":
+		// In OPR, "selesai" is always displayed but grayed out
+		display = true
+		// When patient reach the pre-determined last room, then it became highlighted
+		// For OPR, last room is always last room in array (it's static)
+		if rd[len(rd)-1].IsActive {
+			active = true
+		}
+	case "pol":
+		// In POL, "selesai" is displayed & highlighted
+		// when patient reach the pre-determined last room
+		// For POL, last room is always the active one
+		if rd[len(rd)-1].Name == "Kasir" {
+			display, active = true, true
+		}
+	}
+
+	return display, active
 }
 
+//========================================================================//
+// ** Internal Pages Implementation **//
 var (
 	loggedUserSession  *sessions.CookieStore
 	notificationConfig = "./notification.json"
 )
+
+type Notification struct {
+	Code string `json:"code"`
+	Text string `json:"text"`
+}
 
 func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
@@ -491,7 +546,6 @@ func InternalLoginHandler(w http.ResponseWriter, r *http.Request) {
 		session, _ := loggedUserSession.New(r, "authenticated-user-session")
 		session.Values["username"] = username
 		session.Values["authenticated"] = true
-		session.Values["changes-saved"] = false
 		err := session.Save(r, w)
 		if err != nil {
 			ErrorLogger.Printf("fail to save kmn-internal session. %v\n", err)
@@ -535,70 +589,36 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 	// Personalize page according to cookies data (username), and also notification config for latest value
 	// 1. Translate username, which is branch code, into branch name
 	branchCode := fmt.Sprintf("%v", session.Values["username"])
-	branchName := ""
-	for _, branchData := range AppConfig.Branches {
-		if branchData.Code == branchCode {
-			branchName = branchData.Name
-		}
-	}
-	// 2. Get rooms in config.json and prepare controls for each one
-	oprRooms := make([]RoomNotification, 0)
-	for _, room := range AppConfig.Rooms["opr"] {
-		oprRooms = append(oprRooms, RoomNotification{
-			Name:         room.Name,
-			Code:         room.GroupCode,
-			Notification: "",
-		})
-	}
-	polRooms := make([]RoomNotification, 0)
-	for _, room := range AppConfig.Rooms["pol"] {
-		polRooms = append(polRooms, RoomNotification{
-			Name:         room.Name,
-			Code:         room.GroupCode,
-			Notification: "",
-		})
-	}
+	branchName, _ := AppConfig.getBranchInfo(branchCode)
 
 	// 3. Read existing notification text from config file
 	notificationViper.ReadInConfig()
-	notification := make(map[string]string)
-	notificationViper.UnmarshalKey(branchCode, &notification)
-	// Branch
+
+	notifications := []Notification{}
+
+	notificationViper.UnmarshalKey(branchCode, &notifications)
+
+	// code "branch" is always the first in array
 	branchNotification := ""
-	if text, exist := notification["branch"]; exist {
-		branchNotification = text
-	}
+	n := len(notifications)
+	if n > 0 {
+		if notifications[0].Code != "branch" {
+			ErrorLogger.Printf("kmn-internal: branch in notification.json isn't first entry. structure: %v", notifications)
+		} else {
+			branchNotification = notifications[0].Text
 
-	// Opr Rooms
-	for i := 0; i < len(oprRooms); i++ {
-		// Because branch code entry are capital, but json key is always lowercase
-		code := strings.ToLower(oprRooms[i].Code)
-
-		if text, exist := notification[code]; exist {
-			oprRooms[i].Notification = text
-		}
-	}
-	// Pol Rooms
-	for i := 0; i < len(polRooms); i++ {
-		// Because branch code entry are capital, but json key is always lowercase
-		code := strings.ToLower(polRooms[i].Code)
-
-		if text, exist := notification[code]; exist {
-			polRooms[i].Notification = text
+			if n > 1 {
+				notifications = notifications[1:]
+			}
 		}
 	}
 
 	payload := map[string]interface{}{
 		"Branch":             branchName,
 		"BranchNotification": branchNotification,
-		"OprRooms":           oprRooms,
-		"PolRooms":           polRooms,
-		"ChangesSaved":       session.Values["changes-saved"],
+		"QueueNotification":  notifications,
+		"ValidQueueCodeList": ValidQueueCodeList,
 	}
-
-	// Reset changes-saved flag in cookie
-	session.Values["changes-saved"] = false
-	session.Save(r, w)
 
 	if err := TemplateEditNotification.Execute(w, payload); err != nil {
 		ErrorLogger.Printf("fail to execute template for edit notification. %v\n", err)
@@ -606,13 +626,18 @@ func InternalNotificationSettingGetHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func SanitizeNotificationInput(text string) string {
+func sanitizeNotificationInput(text string) string {
 	// Strip malicious html markup
 	cleanHTML := notificationPolicy.Sanitize(text)
 	// Escape all html markup
 	noMarkUpHTML := html.EscapeString(cleanHTML)
 
 	return noMarkUpHTML
+}
+
+func validateNotificationCode(code string) bool {
+	validQueueExp := regexp.MustCompile(`^[A-Z]{1}$`)
+	return validQueueExp.MatchString(code)
 }
 
 func InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -625,44 +650,48 @@ func InternalNotificationSettingPostHandler(w http.ResponseWriter, r *http.Reque
 	}
 	branchCode := fmt.Sprintf("%v", session.Values["username"])
 
-	if err := r.ParseForm(); err != nil {
-		ErrorLogger.Printf("fail to parse input from / endpoint. %v\n", err)
-		http.Error(w, "input gagal diproses. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
+	// Read JSON payload
+	notifications := []Notification{}
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&notifications); err != nil {
+		ErrorLogger.Printf("kmn-internal: fail to decode edit-notification payload. %v", err)
+		http.Error(w, "edit gagal disimpan. silahkan coba beberapa saat lagi.", http.StatusInternalServerError)
 		return
 	}
 
-	var key string // used for storing input value into config
+	// Construct new array with clean&valid Code and Text
+	notificationsClean := []Notification{}
+	for i := 0; i < len(notifications); i++ {
+		if notifications[i].Code != "branch" && !validateNotificationCode(notifications[i].Code) {
+			ErrorLogger.Printf("kmn-internal: dropping entry because invalid code. code: %v", notifications[i].Code)
+			continue
+		}
 
-	branchNotificationRaw := r.FormValue("branch")
-	key = fmt.Sprintf("%s.branch", branchCode)
-	// Sanitize input
-	branchNotification := notificationPolicy.Sanitize(branchNotificationRaw)
-	notificationViper.Set(key, branchNotification)
-
-	// Because we create control based on RoomMap, then we can assume the control exist with our defined ID (room code)
-	// Get and sanitize all input
-	for _, room := range AppConfig.Rooms["opr"] {
-		// Sanitize input
-		notification := SanitizeNotificationInput(r.FormValue(room.GroupCode))
-
-		// Set config value in memory with Viper
-		key = fmt.Sprintf("%s.%s", branchCode, room.GroupCode)
-		notificationViper.Set(key, notification)
+		notifications[i].Text = sanitizeNotificationInput(notifications[i].Text)
+		notificationsClean = append(notificationsClean, Notification{
+			Code: notifications[i].Code,
+			Text: sanitizeNotificationInput(notifications[i].Text),
+		})
 	}
-	for _, room := range AppConfig.Rooms["pol"] {
-		// Sanitize input
-		notification := SanitizeNotificationInput(r.FormValue(room.GroupCode))
 
-		// Set config value in memory with Viper
-		key = fmt.Sprintf("%s.%s", branchCode, room.GroupCode)
-		notificationViper.Set(key, notification)
+	// Assert array structure where "branch" is first element
+	n := len(notificationsClean)
+	if n > 0 && notificationsClean[0].Code != "branch" {
+		InfoLogger.Printf("kmn-internal: branch isn't first entry. possible custom JSON payload or else. structure: %v", notificationsClean)
 	}
 
 	// Overwrite config file
+	notificationViper.Set(branchCode, notifications)
 	notificationViper.WriteConfig()
 
-	// Redirect back to notification page
-	session.Values["changes-saved"] = true
-	session.Save(r, w)
-	http.Redirect(w, r, "/kmn-internal/notification", http.StatusSeeOther)
+	// Send response
+	response := map[string]bool{
+		"success": true,
+	}
+	b, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		fmt.Println("Marshal err")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
 }

@@ -12,7 +12,9 @@
 
         <!-- Optional JavaScript -->
         <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-        <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+
+        <!-- MUST use full version of jquery to use AJAX. <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script> -->
+        <script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
         
@@ -24,39 +26,120 @@
         </title>
     </head>
     <body class="p-5">
-    {{ if .ChangesSaved }}
-        <div class="alert alert-success">
+        <div class="alert alert-success invisible" id="save-success">
             Text berhasil disimpan!
         </div>
-    {{ end }}
 
         <h1>{{ .Branch }}</h1>
         <form method="POST">
             <div class="form-group">
                 <label>Pesan Cabang</label>
-                <textarea type="text" class="form-control" name="branch" placeholder="Tulis pesan untuk cabang keseluruhan" rows="3">{{ .BranchNotification }}</textarea>
+                <textarea type="text" class="form-control" id="branch" placeholder="Tulis pesan untuk cabang keseluruhan" rows="3">{{ .BranchNotification }}</textarea>
             </div>
             <hr>
             <div>
-                <h3>OPR flow</h3>
-            {{ range $room := .OprRooms }}
-                <div class="form-group">
-                    <label>{{ $room.Name }} ({{ $room.Code }})</label>
-                    <input type="text" class="form-control" name="{{ $room.Code }}" value="{{ $room.Notification }}"></input>
+                <label>Pesan Antrian</label>
+                <label class="small ml-1">(pastikan tidak ada duplikat)</label>
+                
+                {{ $ValidQueueCodeList := .ValidQueueCodeList }}
+            {{ range $queue := .QueueNotification }}
+                <div name="queue-notif-row">
+                    <div class="input-group mb-3">
+                        <select class="form-select">
+                            {{ range $code := $ValidQueueCodeList }}
+                                <option value="{{ $code }}" {{ if eq $code $queue.Code }} selected {{ end }}>{{ $code }}</option>
+                            {{ end }}
+                        </select>
+                        <input type="text" class="form-control" placeholder="Tulis pesan antrian" autocomplete="off" value="{{ $queue.Text }}">
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-danger">Remove</button>
+                        </div>
+                    </div>
                 </div>
             {{ end }}
+
+                <div id="newRow"></div> <!-- placeholder for append location -->
+                <button id="addRow" type="button" class="btn btn-info">Tambah pesan</button>
             </div>
-            <div>
-                <h3>POL flow</h3>
-            {{ range $room := .PolRooms }}
-                <div class="form-group">
-                    <label>{{ $room.Name }} ({{ $room.Code }})</label>
-                    <input type="text" class="form-control" name="{{ $room.Code }}" value="{{ $room.Notification }}"></input>
-                </div>
-            {{ end }}
-            </div>
-            <button type="submit" class="btn btn-primary">Simpan</button>
+            <hr>
+
+            <button type="submit" class="btn btn-primary" id="save">Simpan</button>
             <button type="submit" class="btn btn-link ml-3" formaction="logout">Logout</button>
+
+            <!-- Local Javascript. Put after HTML as it modifies HTML elements -->
+            <script>
+                $("div[name='queue-notif-row']").each(function () {
+                    var btn = $(this).find(":button"); // remove button
+                    btn.on('click', function () {
+                        $(this).closest("div[name='queue-notif-row']").remove();
+                    });
+                });
+
+                $("#addRow").click(function () {
+                    var html = '';
+                    html += '<div name="queue-notif-row">';
+                    html += '   <div class="input-group mb-3">';
+                    html += '        <select class="form-select">';
+                    html += '            {{ range $code := $ValidQueueCodeList }}';
+                    html += '                <option value="{{ $code }}" {{ if eq $code "A" }} selected {{ end }}>{{ $code }}</option>';
+                    html += '            {{ end }}';
+                    html += '       </select>';
+                    html += '       <input type="text" class="form-control" placeholder="Tulis pesan antrian" autocomplete="off">';
+                    html += '       <div class="input-group-append">';
+                    html += '           <button type="button" class="btn btn-danger">Remove</button>';
+                    html += '       </div>';
+                    html += '   </div>';
+                    html += '</div>';
+
+                    $('#newRow').append(html);
+                });
+
+                $("form").on('click', '#save', function (e) {
+                    e.preventDefault();
+
+                    var payload = [];
+                    var codeAppended = [];
+                    
+                    payload.push({
+                        "Code": "branch",
+                        "Text": $("#branch").val(),
+                    });
+
+                    var valid = true;
+                    $("div[name='queue-notif-row']").each(function() {
+                        var code = $(this).find(".form-select").val();
+
+                        if (codeAppended.includes(code)) {
+                            alert("Ditemukan beberapa pesan untuk antrian yang sama! Gagal untuk menyimpan")
+                            valid = false;
+                            return;
+                        }
+
+                        payload.push({
+                            "Code": code,
+                            "Text": $(this).find("input").val(),
+                        });
+                        codeAppended.push(code)
+                    });
+
+                    if (!valid) {
+                        return;
+                    }
+
+                    $.ajax({
+                        url: window.location.href,
+                        method: "POST",
+                        data: JSON.stringify(payload),
+                        success: function(response) {
+                            if (response.success) {
+                                $("#save-success").removeClass("invisible").addClass("visible");
+                            }
+                        }
+                    }).catch(function (e) {
+                        console.log("ERROR: " + a.responseText);
+                    });
+                });
+            </script>
         </form>
     </body>
 </html>

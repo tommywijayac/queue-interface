@@ -18,6 +18,8 @@ func TestConstructRoomListBasedOnTime(t *testing.T) {
 	ErrorLogger = log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	AppConfig.readConfig()
 
+	ctime := time.Now()
+
 	type Test struct {
 		name string
 		args []PatientLog
@@ -28,66 +30,62 @@ func TestConstructRoomListBasedOnTime(t *testing.T) {
 		{
 			name: "all",
 			args: []PatientLog{
-				{
-					Group: "REG",
-					Time:  time.Now(),
-				}, {
-					Group: "RM",
-					Time:  time.Now().Add(time.Second * 1),
-				}, {
-					Group: "PA",
-					Time:  time.Now().Add(time.Second * 2),
-				}, {
-					Group: "REF",
-					Time:  time.Now().Add(time.Second * 3),
-				}, {
-					Group: "POLI",
-					Time:  time.Now().Add(time.Second * 4),
-				},
+				{Group: "REG", Time: ctime},
+				{Group: "RM", Time: ctime.Add(time.Second * 1)},
+				{Group: "PA", Time: ctime.Add(time.Second * 2)},
+				{Group: "REF", Time: ctime.Add(time.Second * 3)},
+				{Group: "POLI", Time: ctime.Add(time.Second * 4)},
 			},
 			want: []RoomDisplay{
-				{
-					Name:     "Registrasi",
-					IsActive: false,
-				}, {
-					Name:     "Rekam Medik",
-					IsActive: false,
-				}, {
-					Name:     "Pemeriksaan Awal",
-					IsActive: false,
-				}, {
-					Name:     "Refraksi",
-					IsActive: false,
-				}, {
-					Name:     "Ruang Konsul",
-					IsActive: true,
-				},
+				{Name: "Registrasi", IsActive: false},
+				{Name: "Rekam Medik", IsActive: false},
+				{Name: "Pemeriksaan Awal", IsActive: false},
+				{Name: "Refraksi", IsActive: false},
+				{Name: "Ruang Konsul", IsActive: true},
 			},
 		}, {
 			name: "mix",
 			args: []PatientLog{
-				{
-					Group: "RM",
-					Time:  time.Now(),
-				}, {
-					Group: "POLI",
-					Time:  time.Now().Add(time.Second * 1),
-				}, {
-					Group: "REF",
-					Time:  time.Now().Add(time.Second * 2),
-				},
+				{Group: "RM", Time: ctime},
+				{Group: "POLI", Time: ctime.Add(time.Second * 1)},
+				{Group: "REF", Time: ctime.Add(time.Second * 2)},
 			},
 			want: []RoomDisplay{
-				{
-					Name:     "Rekam Medik",
-					IsActive: false,
-				}, {
-					Name:     "Ruang Konsul",
-					IsActive: false,
-				}, {
-					Name:     "Refraksi",
-					IsActive: true,
-				},
+				{Name: "Rekam Medik", IsActive: false},
+				{Name: "Ruang Konsul", IsActive: false},
+				{Name: "Refraksi", IsActive: true},
+			},
+		}, {
+			name: "dupe-sequential",
+			args: []PatientLog{
+				{Group: "RM", Time: ctime},
+				{Group: "RM", Time: ctime},
+				{Group: "RM", Time: ctime.Add(time.Second * 1)},
+				{Group: "REF", Time: ctime.Add(time.Second * 2)},
+				{Group: "REF", Time: ctime.Add(time.Second * 3)},
+				{Group: "REF", Time: ctime.Add(time.Second * 3)},
+				{Group: "POLI", Time: ctime.Add(time.Second * 4)},
+				{Group: "POLI", Time: ctime.Add(time.Second * 5)},
+			},
+			want: []RoomDisplay{
+				{Name: "Rekam Medik", Time: ctime.Format("15:04:05"), IsActive: false},
+				{Name: "Refraksi", Time: ctime.Add(time.Second * 2).Format("15:04:05"), IsActive: false},
+				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 4).Format("15:04:05"), IsActive: true},
+			},
+		}, {
+			name: "dupe-mixed",
+			args: []PatientLog{
+				{Group: "RM", Time: ctime},
+				{Group: "REF", Time: ctime.Add(time.Second * 1)},
+				{Group: "POLI", Time: ctime.Add(time.Second * 2)},
+				{Group: "REF", Time: ctime.Add(time.Second * 3)},
+				{Group: "POLI", Time: ctime.Add(time.Second * 4)},
+				{Group: "RM", Time: ctime.Add(time.Second * 5)},
+			},
+			want: []RoomDisplay{
+				{Name: "Rekam Medik", Time: ctime.Format("15:04:05"), IsActive: false},
+				{Name: "Refraksi", Time: ctime.Add(time.Second * 2).Format("15:04:05"), IsActive: false},
+				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 3).Format("15:04:05"), IsActive: true},
 			},
 		},
 	}
@@ -180,9 +178,9 @@ func TestConstructRoomListBasedOnOrder(t *testing.T) {
 				{Room: "LAS", Time: ctime.Add(time.Second * 7)},
 			},
 			want: []RoomDisplay{
-				{Name: "Ruang Persiapan Tindakan", Time: ctime.Add(time.Second * 3).Format("15:04:05"), IsActive: false},
-				{Name: "Ruang Tindakan", Time: ctime.Add(time.Second * 5).Format("15:04:05"), IsActive: false},
-				{Name: "Ruang Pemulihan", Time: ctime.Add(time.Second * 7).Format("15:04:05"), IsActive: true},
+				{Name: "Ruang Persiapan Tindakan", Time: ctime.Add(time.Second * 1).Format("15:04:05"), IsActive: false},
+				{Name: "Ruang Tindakan", Time: ctime.Add(time.Second * 4).Format("15:04:05"), IsActive: false},
+				{Name: "Ruang Pemulihan", Time: ctime.Add(time.Second * 6).Format("15:04:05"), IsActive: true},
 			},
 		}, {
 			name: "jump-begin",

@@ -92,6 +92,7 @@ footer {
 .qinput {
     font-size: 40px;
     text-align: center;
+    text-transform: uppercase;
 
     transition: all 0.15s ease-in-out;
     background-color: #F3F6F9;
