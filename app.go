@@ -272,6 +272,7 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
+			InfoLogger.Printf("no room returned by sql query for %v in %v(%v)", fullID, branchID, branchName)
 			NoDataTemplateDisplay(w, r, fullID, process)
 		default:
 			ErrorLogger.Printf("sql query failed. %v", err)
@@ -284,6 +285,7 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	var roomDisplay []RoomDisplay = make([]RoomDisplay, 0)
 	switch process {
 	case "opr":
+		InfoLogger.Printf("no room left after applying logic. proccess: %v", process)
 		roomDisplay = ConstructRoomListBasedOnOrder(logs, process)
 	case "pol":
 		roomDisplay = ConstructRoomListBasedOnTime(logs, process)
