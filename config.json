@@ -48,7 +48,7 @@
             ]
         } ,
         "pol" : {
-            "visible-room": 5,
+            "visible-room": 7,
             "room": [
                 { 
                     "name": "Registrasi",
@@ -66,11 +66,11 @@
                     "name": "Ruang Konsul",
                     "group-code": "POLI"
                 } , {
-                    "name": "",
-                    "group-code": ""
+                    "name": "Laboratorium",
+                    "group-code": "LAB"
                 } , {
-                    "name": "",
-                    "group-code": ""
+                    "name": "PP",
+                    "group-code": "PP"
                 } , {
                     "name": "",
                     "group-code": ""

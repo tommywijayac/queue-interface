@@ -16,10 +16,10 @@ type SessionKey struct {
 }
 
 type RoomData struct {
-	Name      string   `mapstructure:"name"`
-	GroupCode string   `mapstructure:"group-code"`
-	Code      []string `mapstructure:"code"`
-	Order     int      `mapstructure:"order"`
+	Name      string `mapstructure:"name"`
+	GroupCode string `mapstructure:"group-code"`
+	// Code      []string `mapstructure:"code"`
+	Order int `mapstructure:"order"`
 }
 
 type BranchData struct {
@@ -139,28 +139,6 @@ func (cfg *Config) readRoomConfig(process string) {
 	// Save to persisted vars
 	cfg.Rooms[process] = make([]RoomData, len(rooms))
 	copy(cfg.Rooms[process], rooms)
-	cfg.mapRoom(rooms)
-}
-
-func (cfg *Config) mapOprRoom(rooms []RoomData) {
-	// 27/08/2021: Because of KMN specs that the OPR flow all has same group-code,
-	// Then we need to use room-code instead to differentiate, and put them as KEY for OPR flow
-	// 05/09/2021: Obsolete as KMN has change group-code
-
-	process := "opr"
-	for i := 0; i < len(rooms); i++ {
-		// Map each room code. This will be used for matching
-		for _, room_code := range rooms[i].Code {
-			// Standardize key: lowercase
-			room_code = strings.ToLower(room_code)
-
-			cfg.RoomMap[process][room_code] = &rooms[i]
-		}
-	}
-}
-
-func (cfg *Config) mapRoom(rooms []RoomData) {
-	process := "pol"
 	for i := 0; i < len(rooms); i++ {
 		// Standardize key: lowercase
 		group_code := strings.ToLower(rooms[i].GroupCode)
