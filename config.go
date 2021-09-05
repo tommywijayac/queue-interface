@@ -139,19 +139,13 @@ func (cfg *Config) readRoomConfig(process string) {
 	// Save to persisted vars
 	cfg.Rooms[process] = make([]RoomData, len(rooms))
 	copy(cfg.Rooms[process], rooms)
-
-	// cfg.mapRoom(rooms)
-	switch process {
-	case "opr":
-		cfg.mapOprRoom(cfg.Rooms[process])
-	case "pol":
-		cfg.mapRoom(cfg.Rooms[process])
-	}
+	cfg.mapRoom(rooms)
 }
 
 func (cfg *Config) mapOprRoom(rooms []RoomData) {
 	// 27/08/2021: Because of KMN specs that the OPR flow all has same group-code,
 	// Then we need to use room-code instead to differentiate, and put them as KEY for OPR flow
+	// 05/09/2021: Obsolete as KMN has change group-code
 
 	process := "opr"
 	for i := 0; i < len(rooms); i++ {

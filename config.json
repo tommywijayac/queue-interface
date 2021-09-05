@@ -34,18 +34,15 @@
             "room" : [
                 {
                     "name": "Ruang Persiapan Tindakan",
-                    "group-code": "SD-PREOP",
-                    "code": ["PREOP", "PREO"],
+                    "group-code": "PREOP",
                     "order": 0
                 }, {
                     "name": "Ruang Tindakan",
-                    "group-code": "SD-OT",
-                    "code": ["OT1", "OT2", "OT3", "OT4"],
+                    "group-code": "OT",
                     "order": 1
                 }, {
                     "name": "Ruang Pemulihan",
-                    "group-code": "SD-POSTOP",
-                    "code": ["LAS", "RECOP", "POSO"],
+                    "group-code": "PREPOST",
                     "order": 2
                 }
             ]
