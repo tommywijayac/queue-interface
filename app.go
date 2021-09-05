@@ -79,6 +79,7 @@ type RoomDisplay struct {
 	IsActive bool
 	Name     string
 	Time     string
+	TimeOut  string
 }
 
 // Prevent directory traversal by serving index.html in our static web server
@@ -381,11 +382,13 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []RoomDisplay {
 	defaultTimeTxt := "-"
 
+	// Fixed length according to config
 	var roomDisplays []RoomDisplay = make([]RoomDisplay, 0)
 	for _, room := range AppConfig.Rooms[processCode] {
 		roomDisplays = append(roomDisplays, RoomDisplay{
 			Name:     room.Name,
 			Time:     defaultTimeTxt,
+			TimeOut:  defaultTimeTxt,
 			IsActive: false,
 		})
 	}
@@ -398,26 +401,26 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 
 	// Iterate log and find matching room (NOT group!)
 	latest := -1
-	added := map[int]bool{}
 	for _, log := range logs {
 		// Standardize key: lowercase
-		log.Room = strings.ToLower(log.Room)
+		log.Group = strings.ToLower(log.Group)
 
-		if room, valid := AppConfig.RoomMap[processCode][log.Room]; valid {
+		if room, valid := AppConfig.RoomMap[processCode][log.Group]; valid {
 			// Prevent panicking due invalid index
 			if room.Order < 0 && room.Order >= n {
 				continue
 			}
 
 			// Display first log occurence data
-			if exist := added[room.Order]; !exist {
+			if log.Status == "I" && roomDisplays[room.Order].Time == defaultTimeTxt {
 				roomDisplays[room.Order].Time = log.Time.Format("15:04:05")
+			} else if log.Status == "O" && roomDisplays[room.Order].TimeOut == defaultTimeTxt {
+				roomDisplays[room.Order].TimeOut = log.Time.Format("15:04:05")
+			}
 
-				added[room.Order] = true
-
-				if room.Order > latest {
-					latest = room.Order
-				}
+			// See 'latest' usage below for explanation
+			if room.Order > latest {
+				latest = room.Order
 			}
 		}
 	}
@@ -427,6 +430,11 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 	// in above case, if ordered by time, then A would be highlighted. should be B
 	if latest != -1 {
 		roomDisplays[latest].IsActive = true
+
+		// However, if it has OUT record, then it should be inactive
+		if roomDisplays[latest].TimeOut != defaultTimeTxt {
+			roomDisplays[latest].IsActive = false
+		}
 	}
 
 	return roomDisplays
