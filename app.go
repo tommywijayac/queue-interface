@@ -342,6 +342,8 @@ func NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id, process s
 }
 
 func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomDisplay {
+	defaultTimeTxt := "-"
+
 	var roomDisplays []RoomDisplay
 
 	// Sort PatientLog array based on time
@@ -350,30 +352,83 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 	})
 
 	// Translate Room code into Room name, and populate array result
-	added := map[string]bool{}
 	for _, log := range logs {
 		// Standardize key: lowercase
 		log.Group = strings.ToLower(log.Group)
+
 		if room, valid := AppConfig.RoomMap[processCode][log.Group]; valid {
-			// Display first log occurence data
-			if exist := added[log.Group]; !exist {
+			// First entry - immediately add card
+			if len(roomDisplays) == 0 {
 				var rd = RoomDisplay{
 					Name:     room.Name,
-					Time:     log.Time.Format("15:04:05"),
+					Time:     defaultTimeTxt,
+					TimeOut:  defaultTimeTxt,
 					IsActive: false,
 				}
-				roomDisplays = append(roomDisplays, rd)
 
-				added[log.Group] = true
+				switch log.Status {
+				case "I":
+					rd.Time = log.Time.Format("15:04:05")
+				case "O":
+					rd.TimeOut = log.Time.Format("15:04:05")
+				}
+
+				roomDisplays = append(roomDisplays, rd)
+				continue
+			}
+
+			// Else, grab last room
+			lastRoom := &(roomDisplays[len(roomDisplays)-1])
+
+			// Different from last - create new card
+			if lastRoom.Name != room.Name {
+				var rd = RoomDisplay{
+					Name:     room.Name,
+					Time:     defaultTimeTxt,
+					TimeOut:  defaultTimeTxt,
+					IsActive: false,
+				}
+
+				switch log.Status {
+				case "I":
+					rd.Time = log.Time.Format("15:04:05")
+				case "O":
+					rd.TimeOut = log.Time.Format("15:04:05")
+				}
+
+				roomDisplays = append(roomDisplays, rd)
+				continue
+			} else {
+				// Last room has equal code with new room
+
+				// Display first IN log occurence data
+				if log.Status == "I" && lastRoom.Time == defaultTimeTxt {
+					lastRoom.Time = log.Time.Format("15:04:05")
+				}
+
+				// Display OUT log occurence data:
+				// Special condition for "PP" room: always update OUT time, else first occurence
+				// Group must be lowercased
+				if log.Status == "O" && log.Group == "pp" {
+					lastRoom.TimeOut = log.Time.Format("15:04:05")
+				} else if log.Status == "O" && lastRoom.TimeOut == defaultTimeTxt {
+					lastRoom.TimeOut = log.Time.Format("15:04:05")
+				}
 			}
 		}
 	}
 
 	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
 	// Trying to modify the active with below method would crash
-	if len(roomDisplays) > 0 {
+	n := len(roomDisplays)
+	if n > 0 {
 		// Set last room as active room
-		roomDisplays[len(roomDisplays)-1].IsActive = true
+		roomDisplays[n-1].IsActive = true
+
+		// However, if it has OUT record, then it should be inactive
+		if roomDisplays[n-1].TimeOut != defaultTimeTxt {
+			roomDisplays[n-1].IsActive = false
+		}
 	}
 
 	return roomDisplays

@@ -30,62 +30,129 @@ func TestConstructRoomListBasedOnTime(t *testing.T) {
 		{
 			name: "all",
 			args: []PatientLog{
-				{Group: "REG", Time: ctime},
-				{Group: "RM", Time: ctime.Add(time.Second * 1)},
-				{Group: "PA", Time: ctime.Add(time.Second * 2)},
-				{Group: "REF", Time: ctime.Add(time.Second * 3)},
-				{Group: "POLI", Time: ctime.Add(time.Second * 4)},
+				{Group: "REG", Time: ctime, Status: "I"},
+				{Group: "RM", Time: ctime.Add(time.Second * 1), Status: "I"},
+				{Group: "PA", Time: ctime.Add(time.Second * 2), Status: "I"},
+				{Group: "REF", Time: ctime.Add(time.Second * 3), Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 4), Status: "I"},
+				{Group: "LAB", Time: ctime.Add(time.Second * 5), Status: "I"},
+				{Group: "PP", Time: ctime.Add(time.Second * 6), Status: "I"},
 			},
 			want: []RoomDisplay{
-				{Name: "Registrasi", IsActive: false},
-				{Name: "Rekam Medik", IsActive: false},
-				{Name: "Pemeriksaan Awal", IsActive: false},
-				{Name: "Refraksi", IsActive: false},
-				{Name: "Ruang Konsul", IsActive: true},
+				{Name: "Registrasi", Time: ctime.Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Rekam Medik", Time: ctime.Add(time.Second * 1).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Pemeriksaan Awal", Time: ctime.Add(time.Second * 2).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Refraksi", Time: ctime.Add(time.Second * 3).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 4).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Laboratorium", Time: ctime.Add(time.Second * 5).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "PP", Time: ctime.Add(time.Second * 6).Format("15:04:05"), IsActive: true, TimeOut: "-"},
 			},
 		}, {
 			name: "mix",
 			args: []PatientLog{
-				{Group: "RM", Time: ctime},
-				{Group: "POLI", Time: ctime.Add(time.Second * 1)},
-				{Group: "REF", Time: ctime.Add(time.Second * 2)},
+				{Group: "RM", Time: ctime, Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 1), Status: "I"},
+				{Group: "REF", Time: ctime.Add(time.Second * 2), Status: "I"},
 			},
 			want: []RoomDisplay{
-				{Name: "Rekam Medik", IsActive: false},
-				{Name: "Ruang Konsul", IsActive: false},
-				{Name: "Refraksi", IsActive: true},
+				{Name: "Rekam Medik", Time: ctime.Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 1).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Refraksi", Time: ctime.Add(time.Second * 2).Format("15:04:05"), IsActive: true, TimeOut: "-"},
+			},
+		}, {
+			name: "inactive",
+			args: []PatientLog{
+				{Group: "RM", Time: ctime, Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 1), Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 2), Status: "O"},
+			},
+			want: []RoomDisplay{
+				{
+					Name: "Rekam Medik", IsActive: false,
+					Time:    ctime.Format("15:04:05"),
+					TimeOut: "-",
+				}, {
+					Name: "Ruang Konsul", IsActive: false,
+					Time:    ctime.Add(time.Second * 1).Format("15:04:05"),
+					TimeOut: ctime.Add(time.Second * 2).Format("15:04:05"),
+				},
+			},
+		}, {
+			name: "inactive-2",
+			args: []PatientLog{
+				{Group: "RM", Time: ctime, Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 2), Status: "O"},
+			},
+			want: []RoomDisplay{
+				{
+					Name: "Rekam Medik", IsActive: false,
+					Time:    ctime.Format("15:04:05"),
+					TimeOut: "-",
+				}, {
+					Name: "Ruang Konsul", IsActive: false,
+					Time:    "-",
+					TimeOut: ctime.Add(time.Second * 2).Format("15:04:05"),
+				},
 			},
 		}, {
 			name: "dupe-sequential",
 			args: []PatientLog{
-				{Group: "RM", Time: ctime},
-				{Group: "RM", Time: ctime},
-				{Group: "RM", Time: ctime.Add(time.Second * 1)},
-				{Group: "REF", Time: ctime.Add(time.Second * 2)},
-				{Group: "REF", Time: ctime.Add(time.Second * 3)},
-				{Group: "REF", Time: ctime.Add(time.Second * 3)},
-				{Group: "POLI", Time: ctime.Add(time.Second * 4)},
-				{Group: "POLI", Time: ctime.Add(time.Second * 5)},
+				{Group: "RM", Time: ctime, Status: "I"},
+				{Group: "RM", Time: ctime, Status: "O"},
+				{Group: "RM", Time: ctime.Add(time.Second * 1), Status: "O"},
+				{Group: "REF", Time: ctime.Add(time.Second * 2), Status: "I"},
+				{Group: "REF", Time: ctime.Add(time.Second * 3), Status: "I"},
+				{Group: "REF", Time: ctime.Add(time.Second * 3), Status: "O"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 4), Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 5), Status: "I"},
 			},
 			want: []RoomDisplay{
-				{Name: "Rekam Medik", Time: ctime.Format("15:04:05"), IsActive: false},
-				{Name: "Refraksi", Time: ctime.Add(time.Second * 2).Format("15:04:05"), IsActive: false},
-				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 4).Format("15:04:05"), IsActive: true},
+				{
+					Name: "Rekam Medik", IsActive: false,
+					Time:    ctime.Format("15:04:05"),
+					TimeOut: ctime.Format("15:04:05"),
+				}, {
+					Name: "Refraksi", IsActive: false,
+					Time:    ctime.Add(time.Second * 2).Format("15:04:05"),
+					TimeOut: ctime.Add(time.Second * 3).Format("15:04:05"),
+				}, {
+					Name: "Ruang Konsul", IsActive: true,
+					Time:    ctime.Add(time.Second * 4).Format("15:04:05"),
+					TimeOut: "-",
+				},
 			},
 		}, {
 			name: "dupe-mixed",
 			args: []PatientLog{
-				{Group: "RM", Time: ctime},
-				{Group: "REF", Time: ctime.Add(time.Second * 1)},
-				{Group: "POLI", Time: ctime.Add(time.Second * 2)},
-				{Group: "REF", Time: ctime.Add(time.Second * 3)},
-				{Group: "POLI", Time: ctime.Add(time.Second * 4)},
-				{Group: "RM", Time: ctime.Add(time.Second * 5)},
+				{Group: "RM", Time: ctime, Status: "I"},
+				{Group: "REF", Time: ctime.Add(time.Second * 1), Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 2), Status: "I"},
+				{Group: "REF", Time: ctime.Add(time.Second * 3), Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 4), Status: "I"},
+				{Group: "RM", Time: ctime.Add(time.Second * 5), Status: "I"},
 			},
 			want: []RoomDisplay{
-				{Name: "Rekam Medik", Time: ctime.Format("15:04:05"), IsActive: false},
-				{Name: "Refraksi", Time: ctime.Add(time.Second * 2).Format("15:04:05"), IsActive: false},
-				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 3).Format("15:04:05"), IsActive: true},
+				{Name: "Rekam Medik", Time: ctime.Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Refraksi", Time: ctime.Add(time.Second * 1).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 2).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Refraksi", Time: ctime.Add(time.Second * 3).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 4).Format("15:04:05"), IsActive: false, TimeOut: "-"},
+				{Name: "Rekam Medik", Time: ctime.Add(time.Second * 5).Format("15:04:05"), IsActive: true, TimeOut: "-"},
+			},
+		}, {
+			name: "seq-pps",
+			args: []PatientLog{
+				{Group: "PP", Time: ctime.Add(time.Second * 1), Status: "I"},
+				{Group: "PP", Time: ctime.Add(time.Second * 2), Status: "O"},
+				{Group: "PP", Time: ctime.Add(time.Second * 3), Status: "I"},
+				{Group: "PP", Time: ctime.Add(time.Second * 4), Status: "O"},
+			},
+			want: []RoomDisplay{
+				{
+					Name: "PP", IsActive: false,
+					Time:    ctime.Add(time.Second * 1).Format("15:04:05"),
+					TimeOut: ctime.Add(time.Second * 4).Format("15:04:05"),
+				},
 			},
 		},
 	}
@@ -105,6 +172,14 @@ func TestConstructRoomListBasedOnTime(t *testing.T) {
 			if get[i].IsActive != tt.want[i].IsActive {
 				t.Errorf("case %v: wrong active: room %v is active %v, should be %v",
 					tt.name, get[i].Name, get[i].IsActive, tt.want[i].IsActive)
+			}
+			if get[i].Time != tt.want[i].Time {
+				t.Errorf("case %v: room %v wrong time in: get %v want %v", tt.name, get[i].Name, get[i].Time, tt.want[i].Time)
+				continue
+			}
+			if get[i].TimeOut != tt.want[i].TimeOut {
+				t.Errorf("case %v: room %v wrong time out: get %v want %v", tt.name, get[i].Name, get[i].TimeOut, tt.want[i].TimeOut)
+				continue
 			}
 		}
 	}
