@@ -36,30 +36,15 @@
         
                 <div class="container">
             {{ range $index, $room := .Rooms }}
-                {{ if $room.IsActive }}
-                    <div class="col-md-6 queue-card mx-auto">
-                        <div class="h4">{{ $room.Name }}</div>
-                        <div class="h5">pk. {{ $room.Time }}</div>
-                    </div>
-                    {{ if last $index $.Rooms | not }}
-                        <div class="vertical-line mx-auto"></div>
-                    {{ end }}
-                {{ else }}
-                    <div class="col-md-6 queue-card mx-auto" style="color:gainsboro; border-color:gainsboro;">
-                        <div class="h4">{{ $room.Name }}</div>
-                        <div class="h5">pk. {{ $room.Time }}</div>
-                    </div>
-                    {{ if last $index $.Rooms | not }}
-                        <div class="vertical-line mx-auto" style="background-color: gainsboro;"></div>
-                    {{ end }}
+                <div class="col-md-6 queue-card mx-auto" {{ if $room.IsActive | not }} style="color:gainsboro; border-color:gainsboro;" {{ end }}>
+                    <div class="h4">{{ $room.Name }}</div>
+                    <div>masuk <span class="h5">pk. {{ $room.Time }}</span></div>
+                    <div>keluar <span class="h5">pk. {{ $room.TimeOut }}</span></div>
+                </div>
+                {{ if last $index $.Rooms | not }}
+                    <div class="vertical-line mx-auto" {{ if $room.IsActive | not }} style="background-color: gainsboro;" {{ end }}></div>
                 {{ end }}
             {{ end }}
-
-                {{ if .ShowFinish }}
-                    <div class="vertical-line mx-auto" {{ if .ActivateFinish | not }} style="background-color: gainsboro" {{ end }}></div>
-                    <div class="dot mx-auto" {{ if .ActivateFinish | not }} style="background-color: gainsboro" {{ end }}></div>
-                    <div class="h4" {{ if .ActivateFinish | not }} style="color: gainsboro" {{ end }}> selesai </div>
-                {{ end }}
                 </div>
 
                 <p class="font-italic mt-3">
@@ -75,6 +60,8 @@
                 {{ if .RoomNotification }}
                     {{ template "_footer" .RoomNotification }}
                 {{ end }}
+
+                <a class="btn btn-primary kmn-theme" href="/">kembali</a>
             </div>
         </div>
 

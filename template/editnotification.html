@@ -97,6 +97,12 @@
                 $("form").on('click', '#save', function (e) {
                     e.preventDefault();
 
+                    // Reset all input error states
+                    $("div[name='queue-notif-row']").each(function() {
+                        $(this).find(".input-group").removeClass("has-validation");
+                        $(this).find("input").removeClass("is-invalid");
+                    });
+
                     var payload = [];
                     var codeAppended = [];
                     
@@ -107,17 +113,21 @@
 
                     var valid = true;
                     $("div[name='queue-notif-row']").each(function() {
-                        var code = $(this).find(".form-select").val();
+                        var selCtrl = $(this).find(".form-select")
+                        var inputCtrl = $(this).find("input")
+                        var code = selCtrl.val();
 
                         if (codeAppended.includes(code)) {
                             alert("Ditemukan beberapa pesan untuk antrian yang sama! Gagal untuk menyimpan")
                             valid = false;
+                            $(this).find(".input-group").addClass("has-validation");
+                            inputCtrl.addClass("is-invalid");
                             return;
                         }
 
                         payload.push({
                             "Code": code,
-                            "Text": $(this).find("input").val(),
+                            "Text": inputCtrl.val(),
                         });
                         codeAppended.push(code)
                     });

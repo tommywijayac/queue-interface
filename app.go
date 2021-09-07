@@ -79,6 +79,7 @@ type RoomDisplay struct {
 	IsActive bool
 	Name     string
 	Time     string
+	TimeOut  string
 }
 
 // Prevent directory traversal by serving index.html in our static web server
@@ -272,6 +273,7 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
+			InfoLogger.Printf("no room returned by sql query for %v in %v(%v)", fullID, branchID, branchName)
 			NoDataTemplateDisplay(w, r, fullID, process)
 		default:
 			ErrorLogger.Printf("sql query failed. %v", err)
@@ -284,6 +286,7 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	var roomDisplay []RoomDisplay = make([]RoomDisplay, 0)
 	switch process {
 	case "opr":
+		InfoLogger.Printf("no room left after applying logic. proccess: %v", process)
 		roomDisplay = ConstructRoomListBasedOnOrder(logs, process)
 	case "pol":
 		roomDisplay = ConstructRoomListBasedOnTime(logs, process)
@@ -295,10 +298,6 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Determine to draw "selesai" part
-	// showFinish, activeFinish := IsRoomDisplayConsistFinish(roomDisplay, process)
-	showFinish, activeFinish := false, false
-
 	// Get notification
 	branchNotification, roomNotification := GetNotification(branch, r.FormValue("qinput1"))
 
@@ -306,8 +305,6 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 		"Branch":             branchName,
 		"Id":                 fullID,
 		"Rooms":              roomDisplay,
-		"ShowFinish":         showFinish,
-		"ActivateFinish":     activeFinish,
 		"LastUpdated":        time.Now().Format("2006-01-02 15:04:05"),
 		"BranchNotification": branchNotification,
 		"RoomNotification":   roomNotification,
@@ -345,6 +342,8 @@ func NoDataTemplateDisplay(w http.ResponseWriter, r *http.Request, id, process s
 }
 
 func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomDisplay {
+	defaultTimeTxt := "-"
+
 	var roomDisplays []RoomDisplay
 
 	// Sort PatientLog array based on time
@@ -353,30 +352,83 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 	})
 
 	// Translate Room code into Room name, and populate array result
-	added := map[string]bool{}
 	for _, log := range logs {
 		// Standardize key: lowercase
 		log.Group = strings.ToLower(log.Group)
+
 		if room, valid := AppConfig.RoomMap[processCode][log.Group]; valid {
-			// Display first log occurence data
-			if exist := added[log.Group]; !exist {
+			// First entry - immediately add card
+			if len(roomDisplays) == 0 {
 				var rd = RoomDisplay{
 					Name:     room.Name,
-					Time:     log.Time.Format("15:04:05"),
+					Time:     defaultTimeTxt,
+					TimeOut:  defaultTimeTxt,
 					IsActive: false,
 				}
-				roomDisplays = append(roomDisplays, rd)
 
-				added[log.Group] = true
+				switch log.Status {
+				case "I":
+					rd.Time = log.Time.Format("15:04:05")
+				case "O":
+					rd.TimeOut = log.Time.Format("15:04:05")
+				}
+
+				roomDisplays = append(roomDisplays, rd)
+				continue
+			}
+
+			// Else, grab last room
+			lastRoom := &(roomDisplays[len(roomDisplays)-1])
+
+			// Different from last - create new card
+			if lastRoom.Name != room.Name {
+				var rd = RoomDisplay{
+					Name:     room.Name,
+					Time:     defaultTimeTxt,
+					TimeOut:  defaultTimeTxt,
+					IsActive: false,
+				}
+
+				switch log.Status {
+				case "I":
+					rd.Time = log.Time.Format("15:04:05")
+				case "O":
+					rd.TimeOut = log.Time.Format("15:04:05")
+				}
+
+				roomDisplays = append(roomDisplays, rd)
+				continue
+			} else {
+				// Last room has equal code with new room
+
+				// Display first IN log occurence data
+				if log.Status == "I" && lastRoom.Time == defaultTimeTxt {
+					lastRoom.Time = log.Time.Format("15:04:05")
+				}
+
+				// Display OUT log occurence data:
+				// Special condition for "PP" room: always update OUT time, else first occurence
+				// Group must be lowercased
+				if log.Status == "O" && log.Group == "pp" {
+					lastRoom.TimeOut = log.Time.Format("15:04:05")
+				} else if log.Status == "O" && lastRoom.TimeOut == defaultTimeTxt {
+					lastRoom.TimeOut = log.Time.Format("15:04:05")
+				}
 			}
 		}
 	}
 
 	// If logs were not empty, but they are all OPR sequence, then result array would be nil.
 	// Trying to modify the active with below method would crash
-	if len(roomDisplays) > 0 {
+	n := len(roomDisplays)
+	if n > 0 {
 		// Set last room as active room
-		roomDisplays[len(roomDisplays)-1].IsActive = true
+		roomDisplays[n-1].IsActive = true
+
+		// However, if it has OUT record, then it should be inactive
+		if roomDisplays[n-1].TimeOut != defaultTimeTxt {
+			roomDisplays[n-1].IsActive = false
+		}
 	}
 
 	return roomDisplays
@@ -385,11 +437,13 @@ func ConstructRoomListBasedOnTime(logs []PatientLog, processCode string) []RoomD
 func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []RoomDisplay {
 	defaultTimeTxt := "-"
 
+	// Fixed length according to config
 	var roomDisplays []RoomDisplay = make([]RoomDisplay, 0)
 	for _, room := range AppConfig.Rooms[processCode] {
 		roomDisplays = append(roomDisplays, RoomDisplay{
 			Name:     room.Name,
 			Time:     defaultTimeTxt,
+			TimeOut:  defaultTimeTxt,
 			IsActive: false,
 		})
 	}
@@ -402,26 +456,26 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 
 	// Iterate log and find matching room (NOT group!)
 	latest := -1
-	added := map[int]bool{}
 	for _, log := range logs {
 		// Standardize key: lowercase
-		log.Room = strings.ToLower(log.Room)
+		log.Group = strings.ToLower(log.Group)
 
-		if room, valid := AppConfig.RoomMap[processCode][log.Room]; valid {
+		if room, valid := AppConfig.RoomMap[processCode][log.Group]; valid {
 			// Prevent panicking due invalid index
 			if room.Order < 0 && room.Order >= n {
 				continue
 			}
 
 			// Display first log occurence data
-			if exist := added[room.Order]; !exist {
+			if log.Status == "I" && roomDisplays[room.Order].Time == defaultTimeTxt {
 				roomDisplays[room.Order].Time = log.Time.Format("15:04:05")
+			} else if log.Status == "O" && roomDisplays[room.Order].TimeOut == defaultTimeTxt {
+				roomDisplays[room.Order].TimeOut = log.Time.Format("15:04:05")
+			}
 
-				added[room.Order] = true
-
-				if room.Order > latest {
-					latest = room.Order
-				}
+			// See 'latest' usage below for explanation
+			if room.Order > latest {
+				latest = room.Order
 			}
 		}
 	}
@@ -431,35 +485,14 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 	// in above case, if ordered by time, then A would be highlighted. should be B
 	if latest != -1 {
 		roomDisplays[latest].IsActive = true
+
+		// However, if it has OUT record, then it should be inactive
+		if roomDisplays[latest].TimeOut != defaultTimeTxt {
+			roomDisplays[latest].IsActive = false
+		}
 	}
 
 	return roomDisplays
-}
-
-func IsRoomDisplayConsistFinish(rd []RoomDisplay, process string) (bool, bool) {
-	// if opr, always draw selesai: if reach finish active, else inactive
-	// if pol, draw selesai if reach finish, else not drawn
-	display, active := false, false
-
-	switch process {
-	case "opr":
-		// In OPR, "selesai" is always displayed but grayed out
-		display = true
-		// When patient reach the pre-determined last room, then it became highlighted
-		// For OPR, last room is always last room in array (it's static)
-		if rd[len(rd)-1].IsActive {
-			active = true
-		}
-	case "pol":
-		// In POL, "selesai" is displayed & highlighted
-		// when patient reach the pre-determined last room
-		// For POL, last room is always the active one
-		if rd[len(rd)-1].Name == "Kasir" {
-			display, active = true, true
-		}
-	}
-
-	return display, active
 }
 
 //========================================================================//
