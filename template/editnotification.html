@@ -37,7 +37,7 @@
                 <textarea type="text" class="form-control" id="branch" placeholder="Tulis pesan untuk cabang keseluruhan" rows="3">{{ .BranchNotification }}</textarea>
             </div>
             <hr>
-            <div>
+            <div id="queue-notif">
                 <label>Pesan Antrian</label>
                 <label class="small ml-1">(pastikan tidak ada duplikat)</label>
                 
@@ -68,11 +68,8 @@
 
             <!-- Local Javascript. Put after HTML as it modifies HTML elements -->
             <script>
-                $("div[name='queue-notif-row']").each(function () {
-                    var btn = $(this).find(":button"); // remove button
-                    btn.on('click', function () {
-                        $(this).closest("div[name='queue-notif-row']").remove();
-                    });
+                $("#queue-notif").on('click', '.input-group-append button', function() {
+                    $(this).closest("div[name='queue-notif-row']").remove();
                 });
 
                 $("#addRow").click(function () {
