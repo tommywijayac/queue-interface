@@ -204,7 +204,7 @@ func GetNotification(branchCode string, queueCode string) (string, string) {
 	for _, n := range notifications {
 		if n.Code == "branch" {
 			branch = n.Text
-		} else if n.Code == queueCode {
+		} else if n.Code == strings.ToUpper(queueCode) {
 			room = n.Text
 		}
 	}
