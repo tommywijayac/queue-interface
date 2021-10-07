@@ -286,7 +286,6 @@ func DisplayQueueHandler(w http.ResponseWriter, r *http.Request) {
 	var roomDisplay []RoomDisplay = make([]RoomDisplay, 0)
 	switch process {
 	case "opr":
-		InfoLogger.Printf("no room left after applying logic. proccess: %v", process)
 		roomDisplay = ConstructRoomListBasedOnOrder(logs, process)
 	case "pol":
 		roomDisplay = ConstructRoomListBasedOnTime(logs, process)
@@ -454,7 +453,7 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 		return logs[i].Time.Before(logs[j].Time)
 	})
 
-	// Iterate log and find matching room (NOT group!)
+	// Iterate log and find matching group
 	latest := -1
 	for _, log := range logs {
 		// Standardize key: lowercase
@@ -490,6 +489,9 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 		if roomDisplays[latest].TimeOut != defaultTimeTxt {
 			roomDisplays[latest].IsActive = false
 		}
+	} else {
+		// no OPR related data in logs. set return nil so display no-data page instead of empty OPR page
+		return nil
 	}
 
 	return roomDisplays
