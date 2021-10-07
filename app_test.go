@@ -45,7 +45,7 @@ func TestConstructRoomListBasedOnTime(t *testing.T) {
 				{Name: "Refraksi", Time: ctime.Add(time.Second * 3).Format("15:04:05"), IsActive: false, TimeOut: "-"},
 				{Name: "Ruang Konsul", Time: ctime.Add(time.Second * 4).Format("15:04:05"), IsActive: false, TimeOut: "-"},
 				{Name: "Laboratorium", Time: ctime.Add(time.Second * 5).Format("15:04:05"), IsActive: false, TimeOut: "-"},
-				{Name: "PP", Time: ctime.Add(time.Second * 6).Format("15:04:05"), IsActive: true, TimeOut: "-"},
+				{Name: "Pemeriksaan Penunjang", Time: ctime.Add(time.Second * 6).Format("15:04:05"), IsActive: true, TimeOut: "-"},
 			},
 		}, {
 			name: "mix",
@@ -149,7 +149,7 @@ func TestConstructRoomListBasedOnTime(t *testing.T) {
 			},
 			want: []RoomDisplay{
 				{
-					Name: "PP", IsActive: false,
+					Name: "Pemeriksaan Penunjang", IsActive: false,
 					Time:    ctime.Add(time.Second * 1).Format("15:04:05"),
 					TimeOut: ctime.Add(time.Second * 4).Format("15:04:05"),
 				},
@@ -319,6 +319,18 @@ func TestConstructRoomListBasedOnOrder(t *testing.T) {
 				{Name: "Ruang Tindakan", Time: ctime.Add(time.Second * 2).Format("15:04:05"), IsActive: true, TimeOut: "-"},
 				{Name: "Ruang Pemulihan", Time: "-", IsActive: false, TimeOut: "-"},
 			},
+		}, {
+			name: "no OPR data",
+			args: []PatientLog{
+				{Group: "REG", Time: ctime, Status: "I"},
+				{Group: "RM", Time: ctime.Add(time.Second * 1), Status: "I"},
+				{Group: "PA", Time: ctime.Add(time.Second * 2), Status: "I"},
+				{Group: "REF", Time: ctime.Add(time.Second * 3), Status: "I"},
+				{Group: "POLI", Time: ctime.Add(time.Second * 4), Status: "I"},
+				{Group: "LAB", Time: ctime.Add(time.Second * 5), Status: "I"},
+				{Group: "PP", Time: ctime.Add(time.Second * 6), Status: "I"},
+			},
+			want: nil,
 		},
 	}
 
