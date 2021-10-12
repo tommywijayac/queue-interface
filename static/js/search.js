@@ -69,6 +69,7 @@ function updateProcess() {
         case 'kbj':
         case 'jsl':
         case 'kmy':
+        case 'smg':
             document.getElementById("opr").classList.remove("disabled");
             break;
         default:
