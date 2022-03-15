@@ -36,7 +36,7 @@
         
                 <div class="container">
             {{ range $index, $room := .Rooms }}
-                <div class="col-md-6 queue-card mx-auto" {{ if $room.IsActive | not }} style="color:gainsboro; border-color:gainsboro;" {{ end }}>
+                <div class="col-md-6 queue-card mx-auto" {{ if $room.IsActive | not }} style="color:#404040; border-color:gainsboro;" {{ end }}>
                     <div class="h4">{{ $room.Name }}</div>
                     <div>masuk <span class="h5">pk. {{ $room.Time }}</span></div>
                     <div>keluar <span class="h5">pk. {{ $room.TimeOut }}</span></div>
