@@ -442,7 +442,6 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 		roomDisplays = append(roomDisplays, RoomDisplay{
 			Name:     room.Name,
 			Time:     defaultTimeTxt,
-			TimeOut:  defaultTimeTxt,
 			IsActive: false,
 		})
 	}
@@ -468,8 +467,6 @@ func ConstructRoomListBasedOnOrder(logs []PatientLog, processCode string) []Room
 			// Display first log occurence data
 			if log.Status == "I" && roomDisplays[room.Order].Time == defaultTimeTxt {
 				roomDisplays[room.Order].Time = log.Time.Format("15:04:05")
-			} else if log.Status == "O" && roomDisplays[room.Order].TimeOut == defaultTimeTxt {
-				roomDisplays[room.Order].TimeOut = log.Time.Format("15:04:05")
 			}
 
 			// See 'latest' usage below for explanation
