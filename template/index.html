@@ -30,7 +30,7 @@
                 <div class="col-sm-8">
                     {{template "_header" .}}
 
-                    <form action="/search" method="GET" autocomplete="off">
+                    <form action="/search" id="search" method="GET" autocomplete="off">
                         <div>
                             <p class="h5">Selamat datang di KMN EyeCare</p>
                             <p>Untuk mengetahui progress antrian Anda, silakan pilih lokasi KMN EyeCare Anda dan masukkan nomor antrian Anda. Terima kasih</p>
@@ -41,6 +41,7 @@
                         <label class="mb-3">pilih lokasi:</label>
                         <div style="text-align-last: center;">
                             <select class="selectpicker w-100" style="text-align-last: center;" name="branch" id="branch" onchange="updateProcess()">
+                                <option value="" class="text-center" style="color: grey;">(klik untuk melihat pilihan)</option>
                                 {{ range $branch := .Branches }}
                                     <option value="{{ $branch.Code }}" class="text-center">{{ $branch.Name }}</option>
                                 {{ end }}
@@ -75,7 +76,7 @@
                                 <input class="col mx-1 p-0 qinput rounded" id="qinput4" name="qinput4" pattern="[0-9]{1}" type="number" min="0" max="9" required/>
                             </div>
                         </div>
-                        <div class="h-5" style="color:red; opacity: 0; display:none;" id="warning">warning</div>
+                        <div class="h-5" style="color:red; opacity: 0; display:none; margin-top:2em;" id="warning">warning</div>
 
                         <div class="m-1">&nbsp;</div>
                         
