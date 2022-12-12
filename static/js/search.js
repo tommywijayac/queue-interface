@@ -66,6 +66,7 @@ function updateProcess() {
     var selectedBranch = e.value;
 
     switch (selectedBranch){
+        case '':
         case 'kbj':
         case 'jsl':
         case 'kmy':
@@ -75,4 +76,35 @@ function updateProcess() {
         default:
             document.getElementById("opr").classList.add("disabled");
     }
+}
+
+function ShowBranchWarning() {
+  warning.innerHTML = "mohon pilih lokasi terlebih dahulu";
+  warning.style.display = "block";
+
+  warning.classList.remove("fadein-out");
+  // Trigger reflow. 'Magic' in order for animation can be triggered on every click
+  warning.offsetWidth = warning.offsetWidth;
+  warning.classList.add("fadein-out");
+}
+
+function Search(e) {
+  var branch = document.getElementById("branch").value
+  if (branch === '') {
+    ShowBranchWarning();
+
+    //abort process
+    e.preventDefault();
+    return false;
+  }
+
+  //continue with the default process
+  return true;
+}
+
+var form = document.getElementById("search")
+if (form.attachEvent) {
+  form.attachEvent("submit", Search);
+} else {
+  form.addEventListener("submit", Search);
 }
